@@ -130,19 +130,19 @@ Analyze this code diff and generate structured feedback:
 }}"""
 
         response = model.generate_content(prompt)
-        # raw_json = response.text.strip().replace('```json', '').replace('```', '')
-        #
-        # # Validate JSON structure
-        # result = json.loads(raw_json)
-        # if not all(key in result for key in ['response', 'summary_advice']):
-        #     raise ValueError("Invalid response structure")
-        #
-        # for comment in result['response']:
-        #     if not all(k in comment for k in ['comment', 'file_path']):
-        #         raise ValueError("Invalid comment format")
-        #     comment['line'] = comment.get('line', 0)
+        raw_json = response.text.strip().replace('```json', '').replace('```', '')
 
-        return response.to_dict()
+        # Validate JSON structure
+        result = json.loads(raw_json)
+        if not all(key in result for key in ['response', 'summary_advice']):
+            raise ValueError("Invalid response structure")
+
+        for comment in result['response']:
+            if not all(k in comment for k in ['comment', 'file_path']):
+                raise ValueError("Invalid comment format")
+            comment['line'] = comment.get('line', 0)
+
+        return result
 
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON response: {str(e)}")

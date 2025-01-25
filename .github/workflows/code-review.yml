@@ -27,3 +27,4 @@ jobs:
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          model-name: gemini-2.0-flash-exp
