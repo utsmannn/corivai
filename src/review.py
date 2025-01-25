@@ -49,13 +49,28 @@ def sanitize_input(text: str, max_length=2000) -> str:
 
 @retry(max_retries=3, delay=2)
 def get_pr_diff(pr) -> str:
-    """Retrieve PR diff from GitHub API"""
-    try:
-        # Mendapatkan diff dalam format string
-        diff_content = pr.get_diff()
-        return diff_content
-    except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Failed to fetch PR diff: {str(e)}")
+    """
+    Retrieves pull request diff using GitHub API
+    Returns:
+        Diff content as string
+    """
+    # Get environment variables
+    github_token = os.getenv('GITHUB_TOKEN')
+    repo_name = os.getenv('GITHUB_REPOSITORY')
+    # pr_number = os.getenv('GITHUB_REF').split('/')[-2]
+
+    # Configure API request
+    headers = {
+        'Authorization': f'Bearer {github_token}',
+        'Accept': 'application/vnd.github.v3.diff'
+    }
+    url = f'https://api.github.com/repos/{repo_name}/pulls/{pr}'
+
+    # Execute request
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise Exception(f"Failed to get diff: {response.status_code}")
+    return response.text
 
 
 @retry(max_retries=3, delay=2)
