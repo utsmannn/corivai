@@ -48,31 +48,12 @@ def sanitize_input(text: str, max_length=2000) -> str:
 
 
 @retry(max_retries=3, delay=2)
-def get_pr_diff() -> str:
+def get_pr_diff(pr) -> str:
     """Retrieve PR diff from GitHub API"""
     try:
-        pr_number = get_pr_number()
-        repo_name = os.getenv('GITHUB_REPOSITORY')
-        github_token = os.getenv('GITHUB_TOKEN')
-
-        if not repo_name or not github_token:
-            raise ValueError("Environment variables GITHUB_REPOSITORY or GITHUB_TOKEN not found.")
-
-        headers = {
-            'Authorization': f'Bearer {github_token}',
-            'Accept': 'application/vnd.github.v3.diff'
-        }
-
-        # Fetch the overall diff between the target branch and the PR branch
-        overall_diff_response = requests.get(
-            f'https://api.github.com/repos/{repo_name}/pulls/{pr_number}',
-            headers=headers
-        )
-        overall_diff_response.raise_for_status()
-        overall_diff = overall_diff_response.text
-
-        return overall_diff
-
+        # Mendapatkan diff dalam format string
+        diff_content = pr.get_diff()
+        return diff_content
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Failed to fetch PR diff: {str(e)}")
 
@@ -175,7 +156,7 @@ Analyze this code diff and generate structured feedback:
 
 
 @retry(max_retries=2, delay=3)
-def post_comment(comments: list, pr, repo_name, github_token, current_head_sha):
+def post_comment(comments: list, pr, repo_name, github_token, current_head_sha, diff_content):
     """Post review comments by finding accurate positions based on line_string and avoiding duplicates"""
     try:
         # Fetch existing review comments to prevent duplicates
@@ -187,35 +168,38 @@ def post_comment(comments: list, pr, repo_name, github_token, current_head_sha):
         comment_payload = []
 
         # Parsing the diff to map line_number to position
-        diff_lines = pr.diff.split('\n')
-        file_diff_mapping = {}
-        current_file = None
-        position = 0
+        # Note: Mapping line_number to position in diff is non-trivial
+        # Berikut adalah pendekatan sederhana yang mungkin tidak 100% akurat
 
+        # Membuat mapping file_path ke hunk informasi
+        file_hunks = {}
+        current_file = None
+        current_hunk = None
+
+        diff_lines = diff_content.split('\n')
         for line in diff_lines:
             if line.startswith('diff --git'):
-                current_file = re.findall(r'diff --git a/(.+?) b/(.+)', line)[0][1]
-                file_diff_mapping[current_file] = []
-                position = 0
+                match = re.match(r'diff --git a/(.+?) b/(.+)', line)
+                if match:
+                    current_file = match.group(2)
+                    file_hunks[current_file] = []
             elif line.startswith('@@'):
-                # Example: @@ -1,4 +1,5 @@
-                hunk_header = re.findall(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', line)
-                if hunk_header:
-                    start_line = int(hunk_header[0][0])
-                    file_diff_mapping[current_file].append({
+                match = re.match(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', line)
+                if match:
+                    start_line = int(match.group(1))
+                    file_hunks[current_file].append({
                         'start_line': start_line,
                         'lines': []
                     })
-            elif current_file and not line.startswith('diff --git'):
-                # Add lines to the current hunk
+            elif current_file and current_hunk:
                 if line.startswith('+') and not line.startswith('+++'):
-                    file_diff_mapping[current_file][-1]['lines'].append(line[1:].rstrip('\n'))
+                    file_hunks[current_file][-1]['lines'].append(line[1:].rstrip('\n'))
                 elif line.startswith('-') and not line.startswith('---'):
                     pass  # Removed lines
                 elif line.startswith(' '):
                     pass  # Context lines
 
-        # Mapping line_string to line_number
+        # Mapping line_number to position
         for comment in comments:
             file_path = comment['file_path']
             line_string = comment['line_string']
@@ -244,12 +228,17 @@ def post_comment(comments: list, pr, repo_name, github_token, current_head_sha):
                 print(f"Line string '{line_string}' not found in file {file_path}.")
                 continue
 
-            # Map line_number to position in diff
+            # Find the corresponding position in diff
             position_in_diff = None
-            if file_path in file_diff_mapping:
-                for hunk in file_diff_mapping[file_path]:
-                    if hunk['start_line'] <= line_number < hunk['start_line'] + len(hunk['lines']):
-                        position_in_diff = hunk['start_line'] + (line_number - hunk['start_line']) + 1
+            if file_path in file_hunks:
+                for hunk in file_hunks[file_path]:
+                    start_line = hunk['start_line']
+                    added_lines = hunk['lines']
+                    for i, added_line in enumerate(added_lines):
+                        if added_line.strip() == line_string.strip():
+                            position_in_diff = start_line + i
+                            break
+                    if position_in_diff:
                         break
 
             if position_in_diff is None:
@@ -274,6 +263,9 @@ def post_comment(comments: list, pr, repo_name, github_token, current_head_sha):
                 comments=comment_payload
             )
             print(f"Posted {len(comment_payload)} new review comments.")
+
+            # Tambahkan komentar Last Processed SHA
+            pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
         else:
             print("No new comments to post.")
 
@@ -309,16 +301,10 @@ def main():
         pr_number = get_pr_number()
         pr = repo.get_pull(pr_number)
 
-        # Get PR diff
-        diff_content = get_pr_diff()
-        if len(diff_content) > max_diff_size:
-            print(f"⚠️ Diff size ({len(diff_content)} bytes) exceeds limit")
-            return
-
         # Get current head SHA
         current_head_sha = pr.head.sha
 
-        # Check last processed SHA
+        # Cek apakah sudah ada commit baru yang belum diproses
         existing_issue_comments = pr.get_issue_comments()
         last_processed_sha = None
         for comment in existing_issue_comments:
@@ -328,6 +314,12 @@ def main():
 
         if last_processed_sha == current_head_sha:
             print("No new commits to process. Skipping diff processing to avoid duplication.")
+            return
+
+        # Get PR diff
+        diff_content = get_pr_diff(pr)
+        if len(diff_content) > max_diff_size:
+            print(f"⚠️ Diff size ({len(diff_content)} bytes) exceeds limit")
             return
 
         # Generate review
@@ -341,7 +333,7 @@ def main():
         print("Debug Review Data End")
 
         # Post individual comments
-        post_comment(review_data['response'], pr, repo_name, github_token, current_head_sha)
+        post_comment(review_data['response'], pr, repo_name, github_token, current_head_sha, diff_content)
 
         print("✅ Review completed successfully")
 
