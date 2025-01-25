@@ -1,41 +1,22 @@
 name: AI Code Review
+
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-  push:
-    branches:
-      - '**'
+    types: [opened, synchronize, reopened]
+
 jobs:
   review:
     runs-on: ubuntu-latest
-    steps:
-      - name: Get PR number
-        id: get-pr
-        run: |
-          PR_NUMBER=$(gh pr view --json number -q .number || echo "")
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      pull-requests: write
 
-      - if: ${{ steps.get-pr.outputs.pr_number != '' }}
-        name: Checkout code
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - if: ${{ steps.get-pr.outputs.pr_number != '' }}
-        name: Run Customized Review
+      - name: Run Code Review
         uses: ./.github/actions/code-reviewer
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          model-name: 'gemini-1.5-pro-latest'
-          custom-instructions: |
-            **Language-Specific Checks:**
-            - PEP8 compliance
-            - Type hint enforcement
-            - Proper async/await usage
-            - Pytest coverage >80%
-            
-            **Project-Specific Rules:**
-            - Validate configuration against schema
-            - Check for hardcoded secrets
-            - Verify logging consistency
