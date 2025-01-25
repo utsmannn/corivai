@@ -155,7 +155,7 @@ class PRReviewer:
             generation_config=generation_config
         )
 
-        safe_diff = html.escape(diff[:50000])
+        safe_diff = html.escape(diff[:500000])
         prompt = self._build_review_prompt(safe_diff)
 
         try:
