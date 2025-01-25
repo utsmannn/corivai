@@ -32,12 +32,8 @@ def retry(max_retries=3, delay=2):
 
 
 def get_pr_number() -> int:
-    """Extract PR number from GITHUB_REF"""
-    ref = os.getenv('GITHUB_REF', '')
-    parts = ref.split('/')
-    if len(parts) < 4 or parts[2] != 'pull':
-        raise ValueError(f"Invalid GITHUB_REF format: {ref}")
-    return int(parts[3])
+    pr_num = os.getenv('GITHUB_REF').split('/')[-2]
+    return int(pr_num)
 
 
 def sanitize_input(text: str, max_length=2000) -> str:
