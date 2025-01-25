@@ -1,0 +1,38 @@
+name: 'Corivai - Code Review AI Assistant'
+description: 'AI-powered code review with custom instructions'
+inputs:
+  gemini-api-key:
+    description: 'Google Gemini API Key'
+    required: true
+  github-token:
+    description: 'GitHub Token'
+    required: true
+  model-name:
+    description: 'Gemini model name'
+    required: false
+    default: 'gemini-1.5-pro-latest'
+  custom-instructions:
+    description: 'Additional review instructions (Markdown supported)'
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+      shell: bash
+
+    - name: Execute review
+      env:
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_MODEL-NAME: ${{ inputs.model-name }}
+        INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
+      run: python review.py
+      shell: bash

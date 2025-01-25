@@ -1,0 +1,71 @@
+# .gitignore untuk Python
+
+# File hasil kompilasi Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+.env/
+.venv/
+
+# Build dan distribusi
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+
+# File cache dan hasil testing
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+
+# Environment file
+.env
+.env.local
+.env.*.local
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+.ropeproject
+
+# File OS
+.DS_Store
+Thumbs.db
+
+# File log dan database
+*.log
+*.sqlite
+*.db
+
+# File sementara
+*.swp
+*.swo
+
+# File lokal
+settings/local.py
+
+# File konfigurasi khusus
+config.ini
+secrets.py
+
+# Package manager spesifik
+# (Hapus jika Anda menggunakan Poetry/Pipenv dan ingin commit lock file)
+poetry.lock
+Pipfile.lock
+
+# File khusus Python lainnya
+.python-version
+.mypy_cache/
