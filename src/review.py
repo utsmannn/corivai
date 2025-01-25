@@ -1,13 +1,8 @@
 import os
-import sys
-
-import git
 import requests
 import json
 import time
 import html
-
-from git import Repo
 from github import Github
 import google.generativeai as genai
 from google.ai.generativelanguage_v1beta.types import content
@@ -46,61 +41,41 @@ def sanitize_input(text: str, max_length=2000) -> str:
     return html.escape(text[:max_length]) if text else ""
 
 
-def get_pr_diff(repo_path: str, pr_branch: str, target_branch: str) -> dict:
-    """
-    Retrieve PR diffs:
-    1. Overall diff between target branch and PR branch.
-    2. Diff of each new commit with its parent.
-
-    Returns a dictionary with 'overall_diff' and 'commit_diffs'.
-    """
+@retry(max_retries=3, delay=2)
+def get_pr_diff() -> str:
+    """Retrieve PR diff from GitHub API"""
     try:
-        repo = Repo(repo_path)
-        if repo.bare:
-            raise ValueError("Repository is bare.")
+        pr_number = get_pr_number()
+        repo_name = os.getenv('GITHUB_REPOSITORY')
+        github_token = os.getenv('GITHUB_TOKEN')
 
-        # Fetch the latest changes
-        origin = repo.remotes.origin
-        origin.fetch()
-
-        # Checkout target and PR branches
-        repo.git.checkout(target_branch)
-        repo.git.pull(origin, target_branch)
-
-        repo.git.checkout(pr_branch)
-        repo.git.pull(origin, pr_branch)
-
-        # 1. Overall diff between target_branch and pr_branch
-        overall_diff = repo.git.diff(target_branch, pr_branch)
-
-        # 2. Get list of commits on PR branch that are not on target_branch
-        commits = list(repo.iter_commits(f'{target_branch}..{pr_branch}'))
-        commits = commits[::-1]  # Dari yang paling lama ke terbaru
-
-        commit_diffs = []
-        for commit in commits:
-            if commit.parents:
-                parent = commit.parents[0]
-                diff = repo.git.diff(parent.hexsha, commit.hexsha)
-            else:
-                # Jika commit pertama tanpa parent
-                diff = repo.git.diff(commit.hexsha)
-            commit_diffs.append({
-                'commit_sha': commit.hexsha,
-                'commit_message': commit.message.strip(),
-                'diff': diff
-            })
-
-        return {
-            'overall_diff': overall_diff,
-            'commit_diffs': commit_diffs
+        headers = {
+            'Authorization': f'Bearer {github_token}',
+            'Accept': 'application/vnd.github.v3.diff'
         }
 
-    except git.exc.GitError as e:
-        raise RuntimeError(f"Git operation failed: {str(e)}")
-    except Exception as e:
-        raise RuntimeError(f"Failed to retrieve PR diff: {str(e)}")
+        response = requests.get(
+            f'https://api.github.com/repos/{repo_name}/pulls/{pr_number}',
+            headers=headers
+        )
+        response.raise_for_status()
 
+        return response.text
+
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Failed to fetch PR diff: {str(e)}")
+
+def find_line_number(file_path: str, line_str: str) -> int:
+    """Cari line number berdasarkan konten line string"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                # Normalisasi whitespace untuk matching lebih akurat
+                if line.strip() == line_str.strip():
+                    return line_num
+        return -1  # Jika tidak ditemukan
+    except Exception as e:
+        raise RuntimeError(f"Gagal baca file {file_path}: {str(e)}")
 
 @retry(max_retries=3, delay=2)
 def generate_review(diff: str, model_name: str, custom_instructions: str) -> dict:
@@ -126,7 +101,7 @@ def generate_review(diff: str, model_name: str, custom_instructions: str) -> dic
                         items=content.Schema(
                             type=content.Type.OBJECT,
                             enum=[],
-                            required=["comment", "file_path"],
+                            required=["comment", "file_path", "line_string"],
                             properties={
                                 "comment": content.Schema(
                                     type=content.Type.STRING,
@@ -134,8 +109,8 @@ def generate_review(diff: str, model_name: str, custom_instructions: str) -> dic
                                 "file_path": content.Schema(
                                     type=content.Type.STRING,
                                 ),
-                                "line": content.Schema(
-                                    type=content.Type.NUMBER,
+                                "line_string": content.Schema(
+                                    type=content.Type.STRING,
                                 ),
                             },
                         ),
@@ -162,23 +137,17 @@ Analyze this code diff and generate structured feedback:
 {safe_diff}
 
 **Requirements:**
-- One specific issue per comment
-- Include exact file path and line number
-- Prioritize security issues first
-- Follow these instructions: {instructions}
-
-**Output Format:**
+- Berikan line string yang spesifik dari kode
+- Contoh response: 
 {{
   "response": [
     {{
-      "comment": "Issue description",
-      "file_path": "src/file.py",
-      "line": 10
+      "comment": "Potential SQL injection",
+      "file_path": "src/db.py",
+      "line_string": "query = f\"SELECT * FROM users WHERE id = user_id\""
     }}
-  ],
-  "summary_advice": "Overall recommendations"
+  ]
 }}"""
-
         response = model.generate_content(prompt)
         raw_json = response.text.strip().replace('```json', '').replace('```', '')
 
@@ -220,7 +189,7 @@ def post_comment(comments: list):
 
         for comment in comments:
             # Adjust line number dengan offset +4
-            original_line = comment['line']
+            original_line = find_line_number(comment['file_path'], comment['line_string'])
             adjusted_line = original_line + 3  # Offset disesuaikan dengan pola diff
 
             # Dapatkan diff untuk file yang bersangkutan
@@ -263,27 +232,18 @@ def main():
         custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
         max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '100000'))
         footer_text = os.getenv('INPUT_FOOTER_TEXT', 'AI Code Review Report')
-        repo_path = os.getenv('GITHUB_WORKSPACE', '.')  # Atur path repositori lokal
 
-        # Cabang PR dan target
-        pr_branch = os.getenv('GITHUB_HEAD_REF')  # Biasanya di-set oleh GitHub Actions
-        target_branch = os.getenv('GITHUB_BASE_REF', 'main')  # Default ke 'main' jika tidak di-set
-
-        if not pr_branch:
-            print("Error: GITHUB_HEAD_REF tidak ditemukan.")
-            sys.exit(1)
-
-        # Get PR diffs
-        diffs = get_pr_diff(repo_path, pr_branch, target_branch)
-        overall_diff = diffs['overall_diff']
-        commit_diffs = diffs['commit_diffs']
-
-        if len(overall_diff) > max_diff_size:
-            print(f"⚠️ Diff size ({len(overall_diff)} bytes) exceeds limit")
+        # Get PR diff
+        diff_content = get_pr_diff()
+        if len(diff_content) > max_diff_size:
+            print(f"⚠️ Diff size ({len(diff_content)} bytes) exceeds limit")
             return
 
-        # Generate review untuk overall diff
-        review_data = generate_review(overall_diff, model_name, custom_instructions)
+        # Generate review
+        review_data = generate_review(diff_content, model_name, custom_instructions)
+
+        # Post individual comments
+
 
         # Post summary
         g = Github(os.getenv('GITHUB_TOKEN'))
@@ -293,14 +253,10 @@ def main():
             f"## 📝 {footer_text}\n\n{review_data['summary_advice']}"
         )
 
-        # Post individual comments dari overall diff
+        print("asuuu..")
+        print(review_data)
+        print("asuuu..0")
         post_comment(review_data['response'])
-
-        # Jika ingin menambahkan review per commit, Anda bisa iterasi melalui commit_diffs
-        for commit_diff in commit_diffs:
-            # Misalnya, Anda bisa memanggil generate_review lagi untuk setiap commit_diff['diff']
-            # dan memposting komentar terpisah
-            pass  # Implementasikan sesuai kebutuhan
 
         print("✅ Review completed successfully")
 
