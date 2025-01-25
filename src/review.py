@@ -1,31 +1,41 @@
 import os
+from functools import wraps
+
 import requests
 import json
 import time
 import html
 import base64
-from github import Github
+import logging
+from typing import Dict, List, Optional
+from github import Github, GithubException
 import google.generativeai as genai
 from google.ai.generativelanguage_v1beta.types import content
-from functools import wraps
 import re
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class ReviewError(Exception):
+    """Custom exception for review-related errors"""
+    pass
 
 
 def retry(max_retries=3, delay=2):
-    """Retry decorator with exponential backoff"""
-
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            retries = 0
-            while retries < max_retries:
+            for attempt in range(max_retries):
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    retries += 1
-                    if retries >= max_retries:
+                    if attempt == max_retries - 1:
+                        logger.error(f"Final retry failed for {func.__name__}: {str(e)}")
                         raise
-                    time.sleep(delay ** retries)
+                    logger.warning(f"Attempt {attempt + 1} failed, retrying...")
+                    time.sleep(delay * (2 ** attempt))
             return func(*args, **kwargs)
 
         return wrapper
@@ -33,166 +43,53 @@ def retry(max_retries=3, delay=2):
     return decorator
 
 
-def get_pr_number() -> int:
-    """Retrieve the PR number from environment variables"""
-    pr_ref = os.getenv('GITHUB_REF', '')
-    if not pr_ref:
-        raise ValueError("Environment variable GITHUB_REF not found.")
-    pr_num = pr_ref.split('/')[-2]
-    return int(pr_num)
+class PRReviewer:
+    def __init__(self):
+        self.github_token = os.getenv('GITHUB_TOKEN')
+        self.repo_name = os.getenv('GITHUB_REPOSITORY')
+        self.model_name = os.getenv('INPUT_MODEL_NAME', 'gemini-1.5-pro-latest')
+        self.max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '100000'))
+        self.footer_text = os.getenv('INPUT_FOOTER_TEXT', 'AI Code Review Report')
+        self.custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
 
+        if not all([self.github_token, self.repo_name]):
+            raise ReviewError("Missing required environment variables")
 
-def sanitize_input(text: str, max_length=2000) -> str:
-    """Sanitize and truncate user input"""
-    return html.escape(text[:max_length]) if text else ""
+        self.github = Github(self.github_token)
+        self.repo = self.github.get_repo(self.repo_name)
 
+        # Configure Gemini
+        genai_api_key = os.getenv('GEMINI_API_KEY')
+        if not genai_api_key:
+            raise ReviewError("Missing Gemini API key")
+        genai.configure(api_key=genai_api_key)
 
-@retry(max_retries=3, delay=2)
-def get_pr_diff(pr) -> str:
-    """
-    Retrieves pull request diff using GitHub API
-    Returns:
-        Diff content as string
-    """
-    # Get environment variables
-    github_token = os.getenv('GITHUB_TOKEN')
-    repo_name = os.getenv('GITHUB_REPOSITORY')
-    # pr_number = os.getenv('GITHUB_REF').split('/')[-2]
+    def get_pr_number(self) -> int:
+        pr_ref = os.getenv('GITHUB_REF')
+        if not pr_ref:
+            raise ReviewError("GITHUB_REF not found")
+        try:
+            return int(pr_ref.split('/')[-2])
+        except (IndexError, ValueError) as e:
+            raise ReviewError(f"Invalid PR reference format: {str(e)}")
 
-    # Configure API request
-    headers = {
-        'Authorization': f'Bearer {github_token}',
-        'Accept': 'application/vnd.github.v3.diff'
-    }
-    url = f'https://api.github.com/repos/{repo_name}/pulls/{pr}'
-
-    # Execute request
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise Exception(f"Failed to get diff: {response.status_code}")
-    return response.text
-
-
-@retry(max_retries=3, delay=2)
-def generate_review(diff: str, model_name: str, custom_instructions: str) -> dict:
-    """Generate structured code review using Gemini"""
-    print("diff:")
-    print(diff)
-    print("diff===")
-    try:
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-
-        generation_config = {
-            "temperature": 1,
-            "top_p": 0.95,
-            "top_k": 40,
-            "max_output_tokens": 8192,
-            "response_schema": content.Schema(
-                type=content.Type.OBJECT,
-                enum=[],
-                required=["response", "summary_advice"],
-                properties={
-                    "response": content.Schema(
-                        type=content.Type.ARRAY,
-                        items=content.Schema(
-                            type=content.Type.OBJECT,
-                            enum=[],
-                            required=["comment", "file_path", "line_string"],
-                            properties={
-                                "comment": content.Schema(
-                                    type=content.Type.STRING,
-                                ),
-                                "file_path": content.Schema(
-                                    type=content.Type.STRING,
-                                ),
-                                "line_string": content.Schema(
-                                    type=content.Type.STRING,
-                                ),
-                            },
-                        ),
-                    ),
-                    "summary_advice": content.Schema(
-                        type=content.Type.STRING,
-                    ),
-                },
-            ),
-            "response_mime_type": "application/json",
+    @retry(max_retries=3, delay=2)
+    def get_pr_diff(self, pr) -> str:
+        headers = {
+            'Authorization': f'Bearer {self.github_token}',
+            'Accept': 'application/vnd.github.v3.diff'
         }
+        url = f'https://api.github.com/repos/{self.repo_name}/pulls/{pr.number}'
 
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            generation_config=generation_config,
-            system_instruction="You are a git diff analyzer that provides line-by-line code reviews."
-        )
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.text
 
-        safe_diff = sanitize_input(diff, 50000)
-        instructions = sanitize_input(custom_instructions)
-
-        prompt = f"""**Code Review Task**
-Analyze this code diff and generate structured feedback:
-{safe_diff}
-
-**Requirements:**
-{instructions}
-- Example: 
-{{
-  "response": [
-    {{
-      "comment": "Potential SQL injection",
-      "file_path": "src/db.py",
-      "line_string": "query = f\"SELECT * FROM users WHERE id = user_id\""
-    }}
-  ],
-  "summary_advice": "Overall recommendations"
-}}"""
-        response = model.generate_content(prompt)
-        raw_json = response.text.strip().replace('```json', '').replace('```', '')
-
-        # Validate JSON structure
-        result = json.loads(raw_json)
-        print("result:")
-        print(result)
-        print("result====")
-
-        # Validate that required fields exist
-        if not all(key in result for key in ['response', 'summary_advice']):
-            raise ValueError("Invalid response structure")
-
-        for comment in result['response']:
-            if not all(k in comment for k in ['comment', 'file_path', 'line_string']):
-                raise ValueError("Invalid comment format")
-
-        return result
-
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON response: {str(e)}")
-    except Exception as e:
-        raise RuntimeError(f"Review generation failed: {str(e)}")
-
-
-@retry(max_retries=2, delay=3)
-def post_comment(comments: list, pr, repo_name, github_token, current_head_sha, diff_content):
-    """Post review comments by finding accurate positions based on line_string and avoiding duplicates"""
-    try:
-        # Fetch existing review comments to prevent duplicates
-        existing_review_comments = pr.get_review_comments()
-        existing_comments_set = set()
-        for comment in existing_review_comments:
-            existing_comments_set.add((comment.path, comment.original_position))
-
-        comment_payload = []
-
-        # Parsing the diff to map line_number to position
-        # Note: Mapping line_number to position in diff is non-trivial
-        # Berikut adalah pendekatan sederhana yang mungkin tidak 100% akurat
-
-        # Membuat mapping file_path ke hunk informasi
+    def parse_diff(self, diff_content: str) -> Dict[str, List[dict]]:
         file_hunks = {}
         current_file = None
-        current_hunk = None
 
-        diff_lines = diff_content.split('\n')
-        for line in diff_lines:
+        for line in diff_content.split('\n'):
             if line.startswith('diff --git'):
                 match = re.match(r'diff --git a/(.+?) b/(.+)', line)
                 if match:
@@ -201,159 +98,168 @@ def post_comment(comments: list, pr, repo_name, github_token, current_head_sha, 
             elif line.startswith('@@'):
                 match = re.match(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', line)
                 if match:
-                    start_line = int(match.group(1))
                     file_hunks[current_file].append({
-                        'start_line': start_line,
+                        'start_line': int(match.group(1)),
                         'lines': []
                     })
-            elif current_file and current_hunk:
+            elif current_file and file_hunks[current_file]:
                 if line.startswith('+') and not line.startswith('+++'):
                     file_hunks[current_file][-1]['lines'].append(line[1:].rstrip('\n'))
-                elif line.startswith('-') and not line.startswith('---'):
-                    pass  # Removed lines
-                elif line.startswith(' '):
-                    pass  # Context lines
 
-        # Mapping line_number to position
+        return file_hunks
+
+    def get_file_content(self, file_path: str, ref: str) -> Optional[List[str]]:
+        try:
+            response = requests.get(
+                f"https://api.github.com/repos/{self.repo_name}/contents/{file_path}?ref={ref}",
+                headers={'Authorization': f'Bearer {self.github_token}'}
+            )
+            response.raise_for_status()
+            content = response.json()['content']
+            return base64.b64decode(content).decode('utf-8').splitlines()
+        except Exception as e:
+            logger.error(f"Failed to fetch file content: {str(e)}")
+            return None
+
+    @retry(max_retries=3, delay=2)
+    def generate_review(self, diff: str) -> dict:
+        generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 8192,
+            "response_schema": content.Schema(
+                type=content.Type.OBJECT,
+                properties={
+                    "response": content.Schema(
+                        type=content.Type.ARRAY,
+                        items=content.Schema(
+                            type=content.Type.OBJECT,
+                            properties={
+                                "comment": content.Schema(type=content.Type.STRING),
+                                "file_path": content.Schema(type=content.Type.STRING),
+                                "line_string": content.Schema(type=content.Type.STRING),
+                            },
+                            required=["comment", "file_path", "line_string"]
+                        )
+                    ),
+                    "summary_advice": content.Schema(type=content.Type.STRING),
+                },
+                required=["response", "summary_advice"]
+            ),
+            "response_mime_type": "application/json",
+        }
+
+        model = genai.GenerativeModel(
+            model_name=self.model_name,
+            generation_config=generation_config
+        )
+
+        safe_diff = html.escape(diff[:50000])
+        prompt = self._build_review_prompt(safe_diff)
+
+        try:
+            response = model.generate_content(prompt)
+            result = json.loads(response.text.strip().replace('```json', '').replace('```', ''))
+            self._validate_review_response(result)
+            return result
+        except Exception as e:
+            raise ReviewError(f"Failed to generate review: {str(e)}")
+
+    def _build_review_prompt(self, diff: str) -> str:
+        return f"""**Code Review Task**
+Analyze this code diff and generate structured feedback:
+{diff}
+
+**Requirements:**
+{self.custom_instructions}
+"""
+
+    def _validate_review_response(self, result: dict) -> None:
+        if not all(key in result for key in ['response', 'summary_advice']):
+            raise ReviewError("Invalid response structure")
+
+        for comment in result['response']:
+            if not all(k in comment for k in ['comment', 'file_path', 'line_string']):
+                raise ReviewError("Invalid comment format")
+
+    @retry(max_retries=2, delay=3)
+    def post_comments(self, comments: list, pr, current_head_sha: str, diff_content: str) -> None:
+        existing_comments = {(c.path, c.original_position) for c in pr.get_review_comments()}
+        file_hunks = self.parse_diff(diff_content)
+        comment_payload = []
+
         for comment in comments:
             file_path = comment['file_path']
             line_string = comment['line_string']
-            issue_comment = comment['comment']
 
-            # Get the latest content of the file from the PR's head commit
-            file_contents_response = requests.get(
-                f"https://api.github.com/repos/{repo_name}/contents/{file_path}?ref={current_head_sha}",
-                headers={'Authorization': f'Bearer {github_token}'}
-            )
-            if file_contents_response.status_code != 200:
-                print(f"Failed to fetch contents of file {file_path}: {file_contents_response.status_code}")
+            file_lines = self.get_file_content(file_path, current_head_sha)
+            if not file_lines:
                 continue
 
-            file_contents = file_contents_response.json()
-            file_text = base64.b64decode(file_contents['content']).decode('utf-8').splitlines()
-
-            # Find the line number based on line_string
-            line_number = None
-            for idx, line in enumerate(file_text, start=1):
-                if line.strip() == line_string.strip():
-                    line_number = idx
-                    break
-
-            if line_number is None:
-                print(f"Line string '{line_string}' not found in file {file_path}.")
+            position = self._find_position_in_diff(file_path, line_string, file_hunks)
+            if not position or (file_path, position) in existing_comments:
                 continue
 
-            # Find the corresponding position in diff
-            position_in_diff = None
-            if file_path in file_hunks:
-                for hunk in file_hunks[file_path]:
-                    start_line = hunk['start_line']
-                    added_lines = hunk['lines']
-                    for i, added_line in enumerate(added_lines):
-                        if added_line.strip() == line_string.strip():
-                            position_in_diff = start_line + i
-                            break
-                    if position_in_diff:
-                        break
-
-            if position_in_diff is None:
-                print(f"Could not map line number {line_number} to position in diff for file {file_path}.")
-                continue
-
-            # Cek apakah sudah ada komentar pada file dan posisi ini
-            if (file_path, position_in_diff) in existing_comments_set:
-                print(f"Comment already exists for {file_path} at position {position_in_diff}, skipping.")
-                continue
-
-            # Tambahkan ke payload
             comment_payload.append({
                 "path": file_path,
-                "position": position_in_diff,
-                "body": f"**Finding**: {issue_comment}\n(Line: {line_number})"
+                "position": position,
+                "body": f"**Finding**: {comment['comment']}"
             })
 
         if comment_payload:
-            pr.create_review(
-                event="COMMENT",
-                comments=comment_payload
-            )
-            print(f"Posted {len(comment_payload)} new review comments.")
-
-            # Tambahkan komentar Last Processed SHA
+            pr.create_review(event="COMMENT", comments=comment_payload)
             pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
-        else:
-            print("No new comments to post.")
+            logger.info(f"Posted {len(comment_payload)} new review comments")
 
-    except Exception as e:
-        raise RuntimeError(f"Failed to post comments: {str(e)}")
+    def _find_position_in_diff(self, file_path: str, line_string: str, file_hunks: dict) -> Optional[int]:
+        if file_path not in file_hunks:
+            return None
 
+        for hunk in file_hunks[file_path]:
+            for i, line in enumerate(hunk['lines']):
+                if line.strip() == line_string.strip():
+                    return hunk['start_line'] + i
+        return None
 
-@retry(max_retries=2, delay=3)
-def post_summary(summary: str, footer_text: str, pr):
-    """Post the summary advice as an issue comment"""
-    try:
-        pr.create_issue_comment(
-            f"## 📝 {footer_text}\n\n{summary}"
-        )
-    except Exception as e:
-        raise RuntimeError(f"Failed to post summary comment: {str(e)}")
+    @retry(max_retries=2, delay=3)
+    def post_summary(self, summary: str, pr) -> None:
+        pr.create_issue_comment(f"## 📝 {self.footer_text}\n\n{summary}")
+
+    def process_pr(self) -> None:
+        try:
+            pr_number = self.get_pr_number()
+            pr = self.repo.get_pull(pr_number)
+            current_head_sha = pr.head.sha
+
+            # Check if already processed
+            for comment in pr.get_issue_comments():
+                if f"@ai-reviewer Last Processed SHA: {current_head_sha}" in comment.body:
+                    logger.info("No new commits to process")
+                    return
+
+            diff_content = self.get_pr_diff(pr)
+            if len(diff_content) > self.max_diff_size:
+                logger.warning(f"Diff size ({len(diff_content)} bytes) exceeds limit")
+                return
+
+            review_data = self.generate_review(diff_content)
+            self.post_summary(review_data['summary_advice'], pr)
+            self.post_comments(review_data['response'], pr, current_head_sha, diff_content)
+
+            logger.info("Review completed successfully")
+
+        except Exception as e:
+            logger.error(f"Critical error in PR review: {str(e)}")
+            raise
 
 
 def main():
-    """Main execution workflow"""
     try:
-        # Configuration
-        model_name = os.getenv('INPUT_MODEL_NAME', 'gemini-1.5-pro-latest')
-        custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
-        max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '100000'))
-        footer_text = os.getenv('INPUT_FOOTER_TEXT', 'AI Code Review Report')
-
-        # Initialize GitHub client
-        github_token = os.getenv('GITHUB_TOKEN')
-        repo_name = os.getenv('GITHUB_REPOSITORY')
-        g = Github(github_token)
-        repo = g.get_repo(repo_name)
-        pr_number = get_pr_number()
-        pr = repo.get_pull(pr_number)
-
-        # Get current head SHA
-        current_head_sha = pr.head.sha
-
-        # Cek apakah sudah ada commit baru yang belum diproses
-        existing_issue_comments = pr.get_issue_comments()
-        last_processed_sha = None
-        for comment in existing_issue_comments:
-            if comment.body.startswith("@ai-reviewer Last Processed SHA:"):
-                last_processed_sha = comment.body.split(":")[1].strip()
-                break
-
-        if last_processed_sha == current_head_sha:
-            print("No new commits to process. Skipping diff processing to avoid duplication.")
-            return
-
-        # Get PR diff
-        diff_content = get_pr_diff(pr)
-        if len(diff_content) > max_diff_size:
-            print(f"⚠️ Diff size ({len(diff_content)} bytes) exceeds limit")
-            return
-
-        # Generate review
-        review_data = generate_review(diff_content, model_name, custom_instructions)
-
-        # Post summary
-        post_summary(review_data['summary_advice'], footer_text, pr)
-
-        print("Debug Review Data:")
-        print(review_data)
-        print("Debug Review Data End")
-
-        # Post individual comments
-        post_comment(review_data['response'], pr, repo_name, github_token, current_head_sha, diff_content)
-
-        print("✅ Review completed successfully")
-
+        reviewer = PRReviewer()
+        reviewer.process_pr()
     except Exception as e:
-        print(f"❌ Critical Error: {str(e)}")
+        logger.error(f"Failed to complete review: {str(e)}")
         exit(1)
 
 
