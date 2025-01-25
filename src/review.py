@@ -68,40 +68,54 @@ def get_pr_diff() -> str:
 
 @retry(max_retries=3, delay=2)
 def generate_review(diff: str, model_name: str, custom_instructions: str) -> dict:
+    print("diff:")
+    print(diff)
+    print("diff===")
     """Generate structured code review using Gemini"""
     try:
         genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
-        generation_config = genai.GenerationConfig(
-            temperature=1,
-            top_p=0.95,
-            top_k=40,
-            max_output_tokens=8192,
-            response_mime_type="application/json",
-            response_schema=content.Schema(
+        generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 8192,
+            "response_schema": content.Schema(
                 type=content.Type.OBJECT,
+                enum=[],
+                required=["response", "summary_advice"],
                 properties={
                     "response": content.Schema(
                         type=content.Type.ARRAY,
                         items=content.Schema(
                             type=content.Type.OBJECT,
+                            enum=[],
                             required=["comment", "file_path"],
                             properties={
-                                "comment": content.Schema(type=content.Type.STRING),
-                                "file_path": content.Schema(type=content.Type.STRING),
-                                "line": content.Schema(type=content.Type.NUMBER)
-                            }
-                        )
+                                "comment": content.Schema(
+                                    type=content.Type.STRING,
+                                ),
+                                "file_path": content.Schema(
+                                    type=content.Type.STRING,
+                                ),
+                                "line": content.Schema(
+                                    type=content.Type.NUMBER,
+                                ),
+                            },
+                        ),
                     ),
-                    "summary_advice": content.Schema(type=content.Type.STRING)
+                    "summary_advice": content.Schema(
+                        type=content.Type.STRING,
+                    ),
                 },
-                required=["response", "summary_advice"]
-            )
-        )
+            ),
+            "response_mime_type": "application/json",
+        }
 
         model = genai.GenerativeModel(
             model_name=model_name,
-            generation_config=generation_config
+            generation_config=generation_config,
+            system_instruction="you are git diff analyzer for give me review line per line code"
         )
 
         safe_diff = sanitize_input(diff, 50000)
@@ -134,6 +148,9 @@ Analyze this code diff and generate structured feedback:
 
         # Validate JSON structure
         result = json.loads(response.text)
+        print("result:")
+        print(result)
+        print("result====")
         # if not all(key in result for key in ['response', 'summary_advice']):
         #     raise ValueError("Invalid response structure")
         #
@@ -221,10 +238,7 @@ def main():
         review_data = generate_review(diff_content, model_name, custom_instructions)
 
         # Post individual comments
-        print("asuuu..")
-        print(review_data)
-        print("asuuu..0")
-        post_comment(review_data['response'])
+
 
         # Post summary
         g = Github(os.getenv('GITHUB_TOKEN'))
@@ -233,6 +247,11 @@ def main():
         pr.create_issue_comment(
             f"## 📝 {footer_text}\n\n{review_data['summary_advice']}"
         )
+
+        print("asuuu..")
+        print(review_data)
+        print("asuuu..0")
+        post_comment(review_data['response'])
 
         print("✅ Review completed successfully")
 
