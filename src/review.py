@@ -174,21 +174,9 @@ Analyze this code diff and generate structured feedback:
 
 
 @retry(max_retries=2, delay=3)
-def post_comment(comments: list):
+def post_comment(comments: list, pr, repo_name, github_token, current_head_sha):
     """Post comments by finding accurate line numbers based on line_string and avoiding duplicates"""
     try:
-        pr_number = get_pr_number()
-        github_token = os.getenv('GITHUB_TOKEN')
-        repo_name = os.getenv('GITHUB_REPOSITORY')
-
-        if not github_token or not repo_name:
-            raise ValueError("Environment variables GITHUB_TOKEN or GITHUB_REPOSITORY not found.")
-
-        g = Github(github_token)
-        repo = g.get_repo(repo_name)
-        pr = repo.get_pull(pr_number)
-        #files = pr.get_files()  # Get list of changed files
-
         # Fetch existing issue comments to track last processed SHA
         existing_issue_comments = pr.get_issue_comments()
         last_processed_sha = None
@@ -197,17 +185,12 @@ def post_comment(comments: list):
                 last_processed_sha = comment.body.split(":")[1].strip()
                 break
 
-        # Get current head SHA
-        current_head_sha = pr.head.sha
-
-        # Jika sudah diproses sebelumnya dengan SHA ini, lewati
-        if last_processed_sha is not None and last_processed_sha == current_head_sha:
+        # Cek apakah sudah ada commit baru yang belum diproses
+        if last_processed_sha == current_head_sha:
             print("No new commits to process. Skipping diff processing to avoid duplication.")
             return
 
-        # Update the last processed SHA
-        pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
-
+        # Setelah memastikan ada commit baru, proses komentar
         # Fetch existing review comments
         existing_review_comments = pr.get_review_comments()
         existing_comments_set = set()
@@ -246,11 +229,24 @@ def post_comment(comments: list):
                 continue
 
             # Cek apakah sudah ada komentar pada file dan baris ini
-            # Menggunakan Issue Comments untuk penyederhanaan
-            # Jika menggunakan Review Comments, mapping position lebih kompleks
-            # Disini, kita menggunakan Issue Comments dan menghindari duplikasi dengan komentar terakhir
+            # Karena menggunakan review comments, kita perlu menentukan 'position' yang tepat
+            # Namun, tanpa mapping yang tepat antara line_number dan position dalam diff, kita akan lewati pengecekan ini
+            # Sebagai gantinya, gunakan issue comments untuk mencegah duplikasi
 
-            # Menambahkan komentar ke payload
+            # Cek apakah sudah ada issue comment pada file dan line_number
+            duplicate = False
+            for existing_comment in existing_issue_comments:
+                if existing_comment.body.startswith("**Finding**") and \
+                   f"Line: {line_number}" in existing_comment.body and \
+                   f"in `{file_path}`" in existing_comment.body:
+                    duplicate = True
+                    print(f"Duplicate comment found for {file_path} at line {line_number}, skipping.")
+                    break
+
+            if duplicate:
+                continue
+
+            # Add comment payload
             comment_payload.append({
                 "path": file_path,
                 "position": line_number,  # Accurate line number (Note: GitHub uses 'position' differently)
@@ -262,6 +258,10 @@ def post_comment(comments: list):
                 event="COMMENT",
                 comments=comment_payload
             )
+            print(f"Posted {len(comment_payload)} new comments.")
+
+            # Update the last processed SHA
+            pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
         else:
             print("No new comments to post.")
 
@@ -270,24 +270,12 @@ def post_comment(comments: list):
 
 
 @retry(max_retries=2, delay=3)
-def post_summary(summary: str, footer_text: str):
+def post_summary(summary: str, footer_text: str, pr):
     """Post the summary advice as an issue comment"""
     try:
-        pr_number = get_pr_number()
-        github_token = os.getenv('GITHUB_TOKEN')
-        repo_name = os.getenv('GITHUB_REPOSITORY')
-
-        if not github_token or not repo_name:
-            raise ValueError("Environment variables GITHUB_TOKEN or GITHUB_REPOSITORY not found.")
-
-        g = Github(github_token)
-        repo = g.get_repo(repo_name)
-        pr = repo.get_pull(pr_number)
-
         pr.create_issue_comment(
             f"## 📝 {footer_text}\n\n{summary}"
         )
-
     except Exception as e:
         raise RuntimeError(f"Failed to post summary comment: {str(e)}")
 
@@ -301,24 +289,35 @@ def main():
         max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '100000'))
         footer_text = os.getenv('INPUT_FOOTER_TEXT', 'AI Code Review Report')
 
+        # Initialize GitHub client
+        github_token = os.getenv('GITHUB_TOKEN')
+        repo_name = os.getenv('GITHUB_REPOSITORY')
+        g = Github(github_token)
+        repo = g.get_repo(repo_name)
+        pr_number = get_pr_number()
+        pr = repo.get_pull(pr_number)
+
         # Get PR diff
         diff_content = get_pr_diff()
         if len(diff_content) > max_diff_size:
             print(f"⚠️ Diff size ({len(diff_content)} bytes) exceeds limit")
             return
 
+        # Get current head SHA
+        current_head_sha = pr.head.sha
+
         # Generate review
         review_data = generate_review(diff_content, model_name, custom_instructions)
 
         # Post summary
-        post_summary(review_data['summary_advice'], footer_text)
+        post_summary(review_data['summary_advice'], footer_text, pr)
 
         print("Debug Review Data:")
         print(review_data)
         print("Debug Review Data End")
 
-        # Post individual comments
-        post_comment(review_data['response'])
+        # Post individual comments and update SHA
+        post_comment(review_data['response'], pr, repo_name, github_token, current_head_sha)
 
         print("✅ Review completed successfully")
 
