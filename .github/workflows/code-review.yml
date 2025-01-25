@@ -18,9 +18,8 @@ jobs:
       - name: List files
         run: |
           echo "Direktori Action:"
-          ls -la .github/actions/code-reviewer
+          ls -la .
           echo "Isi review.py:"
-          cat .github/actions/code-reviewer/review.py
 
       - name: Run Code Review
         uses: ./.github/actions/code-reviewer
