@@ -151,7 +151,7 @@ Analyze this code diff and generate structured feedback:
 
 
 @retry(max_retries=2, delay=3)
-def post_comment(comment: dict):
+def post_comment(comments: list):
     """Post comment to GitHub with line reference"""
     try:
         pr_number = get_pr_number()
@@ -162,23 +162,19 @@ def post_comment(comment: dict):
         repo = g.get_repo(repo_name)
         pr = repo.get_pull(pr_number)
 
-        # pr.create_review_comment(
-        #     body=f"**Code Review Finding**\n\n{comment['comment']}",
-        #     commit=pr.head.commit,  # Gunakan objek Commit, bukan SHA string
-        #     path=comment['file_path'],
-        #     line=comment['line']  # Position harus sesuai dengan diff
-        # )
+        comment_payload = [
+            {
+                "path": comment['file_path'],
+                "position": comment['line'],  # Key harus 'position'
+                "body": f"**Finding**: {comment['comment']}"
+            }
+            for comment in comments
+        ]
 
         pr.create_review(
             body="Komentar Utama Review",
             event="COMMENT",
-            comments=[
-                {
-                    "path": comment['file_path'],
-                    "position": comment['line'],
-                    "body": f"**Finding**: {comment['comment']}"
-                }
-            ]
+            comments=comment_payload
         )
 
 
@@ -205,9 +201,10 @@ def main():
         review_data = generate_review(diff_content, model_name, custom_instructions)
 
         # Post individual comments
-        for comment in review_data['response']:
-            post_comment(comment)
-            time.sleep(1)  # Basic rate limiting
+        print("asuuu..")
+        print(review_data)
+        print("asuuu..0")
+        post_comment(review_data['response'])
 
         # Post summary
         g = Github(os.getenv('GITHUB_TOKEN'))
