@@ -253,16 +253,15 @@ def post_comment(comments: list):
             # Menambahkan komentar ke payload
             comment_payload.append({
                 "path": file_path,
-                "body": f"**Finding**: {issue_comment}\n(Line: {line_number})",
-                "position": None  # Tidak digunakan untuk Issue Comments
+                "position": line_number,  # Accurate line number (Note: GitHub uses 'position' differently)
+                "body": f"**Finding**: {issue_comment}\n(Line: {line_number})"
             })
 
         if comment_payload:
-            for payload in comment_payload:
-                pr.create_issue_comment(
-                    f"{payload['body']} in `{payload['path']}`"
-                )
-            print(f"Posted {len(comment_payload)} new comments.")
+            pr.create_review(
+                event="COMMENT",
+                comments=comment_payload
+            )
         else:
             print("No new comments to post.")
 
