@@ -168,7 +168,7 @@ def post_comment(comments: list):
         for comment in comments:
             # Adjust line number dengan offset +4
             original_line = comment['line']
-            adjusted_line = original_line + 4  # Offset disesuaikan dengan pola diff
+            adjusted_line = original_line + 3  # Offset disesuaikan dengan pola diff
 
             # Dapatkan diff untuk file yang bersangkutan
             target_file = next((f for f in files if f.filename == comment['file_path']), None)
