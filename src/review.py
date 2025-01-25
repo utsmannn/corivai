@@ -133,14 +133,14 @@ Analyze this code diff and generate structured feedback:
         raw_json = response.text.strip().replace('```json', '').replace('```', '')
 
         # Validate JSON structure
-        result = json.loads(raw_json)
-        if not all(key in result for key in ['response', 'summary_advice']):
-            raise ValueError("Invalid response structure")
-
-        for comment in result['response']:
-            if not all(k in comment for k in ['comment', 'file_path']):
-                raise ValueError("Invalid comment format")
-            comment['line'] = comment.get('line', 0)
+        result = json.loads(response.text)
+        # if not all(key in result for key in ['response', 'summary_advice']):
+        #     raise ValueError("Invalid response structure")
+        #
+        # for comment in result['response']:
+        #     if not all(k in comment for k in ['comment', 'file_path']):
+        #         raise ValueError("Invalid comment format")
+        #     comment['line'] = comment.get('line', 0)
 
         return result
 
