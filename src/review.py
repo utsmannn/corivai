@@ -201,7 +201,7 @@ def post_comment(comments: list):
         current_head_sha = pr.head.sha
 
         # Jika sudah diproses sebelumnya dengan SHA ini, lewati
-        if last_processed_sha == current_head_sha:
+        if last_processed_sha is not None and last_processed_sha == current_head_sha:
             print("No new commits to process. Skipping diff processing to avoid duplication.")
             return
 
