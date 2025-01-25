@@ -15,8 +15,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: List files
+        run: |
+          echo "Direktori Action:"
+          ls -la .github/actions/code-reviewer
+          echo "Isi review.py:"
+          cat .github/actions/code-reviewer/review.py
+
       - name: Run Code Review
         uses: ./.github/actions/code-reviewer
         with:
+          path: .github/actions/code-reviewer
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
