@@ -70,7 +70,7 @@ def find_line_number(file_path: str, line_str: str) -> int:
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
-                # Normalisasi whitespace untuk matching lebih akurat
+                # Normalize whitespace untuk matching lebih akurat
                 if line.strip() == line_str.strip():
                     return line_num
         return -1  # Jika tidak ditemukan
