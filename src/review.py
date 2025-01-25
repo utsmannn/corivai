@@ -50,7 +50,7 @@ class PRReviewer:
         self.model_name = os.getenv('INPUT_MODEL_NAME', 'gemini-1.5-pro-latest')
         self.max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '500000'))
         self.footer_text = 'Code Review Report by Coriva'
-        self.footer_text_2 = f'Powered by: Gemini ({self.model_name})'
+        self.summary_text = f'### AI Review using Gemini with Coriva.\nModel: ({self.model_name})'
         self.custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
 
         if not all([self.github_token, self.repo_name]):
@@ -225,7 +225,7 @@ Analyze this code diff and generate structured feedback:
 
     @retry(max_retries=2, delay=3)
     def post_summary(self, summary: str, pr) -> None:
-        pr.create_issue_comment(f"### 📝 {self.footer_text}\n{self.footer_text_2}\n---\n{summary}")
+        pr.create_issue_comment(self.summary_text)
 
     def process_pr(self) -> None:
         try:
