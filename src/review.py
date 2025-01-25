@@ -79,14 +79,15 @@ def get_pr_diff() -> dict:
         commits = commits_response.json()
 
         commit_diffs = []
-        for i in range(1, len(commits)):
-            current_commit = commits[i]
-            previous_commit = commits[i - 1]
+        if len(commits) >= 2:
+            # Only process the last two commits
+            last_commit = commits[-1]
+            second_last_commit = commits[-2]
 
-            current_sha = current_commit['sha']
-            previous_sha = previous_commit['sha']
+            current_sha = last_commit['sha']
+            previous_sha = second_last_commit['sha']
 
-            # Fetch the diff for the current commit compared to the previous commit
+            # Fetch the diff for the last commit compared to the second last commit
             commit_diff_response = requests.get(
                 f'https://api.github.com/repos/{repo_name}/compare/{previous_sha}...{current_sha}',
                 headers={'Authorization': f'Bearer {github_token}', 'Accept': 'application/vnd.github.v3.diff'}
@@ -96,7 +97,7 @@ def get_pr_diff() -> dict:
 
             commit_diffs.append({
                 'commit_sha': current_sha,
-                'commit_message': current_commit['commit']['message'].strip(),
+                'commit_message': last_commit['commit']['message'].strip(),
                 'diff': commit_diff
             })
 
@@ -332,7 +333,7 @@ def main():
         # Post individual comments for overall diff
         post_comment(overall_review['response'])
 
-        # Generate and post reviews for each commit diff
+        # Generate and post reviews for each of the last two commit diffs
         for commit_diff in commit_diffs:
             print(f"Processing commit: {commit_diff['commit_sha']} - {commit_diff['commit_message']}")
             commit_review = generate_review(commit_diff['diff'], model_name, custom_instructions)
