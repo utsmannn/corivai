@@ -152,7 +152,7 @@ Analyze this code diff and generate structured feedback:
 
 @retry(max_retries=2, delay=3)
 def post_comment(comments: list):
-    """Post comment to GitHub with line reference"""
+    """Post comments dengan offset +4 dan pengecekan batas"""
     try:
         pr_number = get_pr_number()
         github_token = os.getenv('GITHUB_TOKEN')
@@ -161,25 +161,45 @@ def post_comment(comments: list):
         g = Github(github_token)
         repo = g.get_repo(repo_name)
         pr = repo.get_pull(pr_number)
+        files = pr.get_files()  # Dapatkan list file yang diubah
 
-        comment_payload = [
-            {
+        comment_payload = []
+
+        for comment in comments:
+            # Adjust line number dengan offset +4
+            original_line = comment['line']
+            adjusted_line = original_line + 4  # Offset disesuaikan dengan pola diff
+
+            # Dapatkan diff untuk file yang bersangkutan
+            target_file = next((f for f in files if f.filename == comment['file_path']), None)
+
+            if not target_file or not target_file.patch:
+                print(f"File {comment['file_path']} tidak ditemukan dalam PR")
+                continue
+
+            # Hitung jumlah lines dalam diff
+            diff_lines = target_file.patch.split('\n')
+            max_position = len(diff_lines)
+
+            # Pastikan adjusted_line tidak melebihi batas diff
+            safe_position = min(adjusted_line, max_position)
+
+            # Jika line asli 0, jangan gunakan offset
+            final_position = safe_position if original_line > 0 else original_line
+
+            comment_payload.append({
                 "path": comment['file_path'],
-                "position": comment['line'],  # Key harus 'position'
-                "body": f"**Finding**: {comment['comment']}"
-            }
-            for comment in comments
-        ]
+                "position": final_position,
+                "body": f"**Finding**: {comment['comment']}\n(Original line: {original_line})"
+            })
 
         pr.create_review(
-            body="Komentar Utama Review",
             event="COMMENT",
             comments=comment_payload
         )
 
-
     except Exception as e:
-        raise RuntimeError(f"Failed to post comment: {str(e)}")
+        raise RuntimeError(f"Failed to post comments: {str(e)}")
 
 
 def main():
