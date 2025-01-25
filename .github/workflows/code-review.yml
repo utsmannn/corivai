@@ -1,46 +1,29 @@
 name: AI Code Review
-
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-
+  push:
+    branches:
+      - '**'
 jobs:
   review:
+    if: github.event_name == 'pull_request' || github.event.ref == format('refs/heads/{0}', github.event.pull_request.head.ref)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      issues: read  # Diperlukan untuk cek PR
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Get PR status
-        id: check-pr
-        env:
-          BRANCH_NAME: ${{ github.ref_name }}
-        run: |
-          # Cek apakah ada PR yang terkait dengan branch
-          pr=$(gh pr list --head "$BRANCH_NAME" --json number --jq '.[0].number')
-          if [ -z "$pr" ]; then
-            echo "::set-output name=has_pr::false"
-          else
-            echo "::set-output name=has_pr::true"
-            echo "::set-output name=pr_number::$pr"
-          fi
-
       - name: Run Customized Review
-        if: steps.check-pr.outputs.has_pr == 'true'
         uses: .github/actions/code-reviewer
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           model-name: 'gemini-1.5-pro-latest'
-          pr-number: ${{ steps.check-pr.outputs.pr_number }}
           custom-instructions: |
             **Language-Specific Checks:**
-            - PEP8 compliance
+            - PEP8 compliance 
             - Type hint enforcement
             - Proper async/await usage
             - Pytest coverage >80%
