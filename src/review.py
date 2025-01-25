@@ -10,6 +10,27 @@ from google.ai.generativelanguage_v1beta.types import content
 from functools import wraps
 
 
+def retry(max_retries=3, delay=2):
+    """Retry decorator with exponential backoff"""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    retries += 1
+                    if retries >= max_retries:
+                        raise
+                    time.sleep(delay ** retries)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
 
 def get_pr_number() -> int:
     """Retrieve the PR number from environment variables"""
@@ -25,6 +46,7 @@ def sanitize_input(text: str, max_length=2000) -> str:
     return html.escape(text[:max_length]) if text else ""
 
 
+@retry(max_retries=3, delay=2)
 def get_pr_diff() -> str:
     """Retrieve PR diff from GitHub API"""
     try:
@@ -54,6 +76,7 @@ def get_pr_diff() -> str:
         raise RuntimeError(f"Failed to fetch PR diff: {str(e)}")
 
 
+@retry(max_retries=3, delay=2)
 def generate_review(diff: str, model_name: str, custom_instructions: str) -> dict:
     """Generate structured code review using Gemini"""
     print("diff:")
@@ -150,6 +173,7 @@ Analyze this code diff and generate structured feedback:
         raise RuntimeError(f"Review generation failed: {str(e)}")
 
 
+@retry(max_retries=2, delay=3)
 def post_comment(comments: list):
     """Post comments by finding accurate line numbers based on line_string and avoiding duplicates"""
     try:
@@ -163,14 +187,33 @@ def post_comment(comments: list):
         g = Github(github_token)
         repo = g.get_repo(repo_name)
         pr = repo.get_pull(pr_number)
-        files = pr.get_files()  # Get list of changed files
+        #files = pr.get_files()  # Get list of changed files
+
+        # Fetch existing issue comments to track last processed SHA
+        existing_issue_comments = pr.get_issue_comments()
+        last_processed_sha = None
+        for comment in existing_issue_comments:
+            if comment.body.startswith("@ai-reviewer Last Processed SHA:"):
+                last_processed_sha = comment.body.split(":")[1].strip()
+                break
+
+        # Get current head SHA
+        current_head_sha = pr.head.sha
+
+        # Jika sudah diproses sebelumnya dengan SHA ini, lewati
+        if last_processed_sha == current_head_sha:
+            print("No new commits to process. Skipping diff processing to avoid duplication.")
+            return
+
+        # Update the last processed SHA
+        pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
 
         # Fetch existing review comments
-        existing_comments = pr.get_review_comments()
-        existing_comments_dict = {}
-        for comment in existing_comments:
-            key = (comment.path, comment.original_position)
-            existing_comments_dict[key] = comment.body
+        existing_review_comments = pr.get_review_comments()
+        existing_comments_set = set()
+        for comment in existing_review_comments:
+            # Mengambil file path dan line position dari komentar review
+            existing_comments_set.add((comment.path, comment.original_position))
 
         comment_payload = []
 
@@ -181,7 +224,7 @@ def post_comment(comments: list):
 
             # Get the latest content of the file from the PR's head commit
             file_contents_response = requests.get(
-                f"https://api.github.com/repos/{repo_name}/contents/{file_path}?ref={pr.head.sha}",
+                f"https://api.github.com/repos/{repo_name}/contents/{file_path}?ref={current_head_sha}",
                 headers={'Authorization': f'Bearer {github_token}'}
             )
             if file_contents_response.status_code != 200:
@@ -202,43 +245,24 @@ def post_comment(comments: list):
                 print(f"Line string '{line_string}' not found in file {file_path}.")
                 continue
 
-            # Check if a comment already exists on this line
-            # GitHub uses 'position' for review comments, which is relative to the diff
-            # To accurately map line numbers, additional logic would be required
-            # For simplicity, we'll check if any existing comment body contains the issue_comment
-            # Alternatively, you can enhance this by mapping 'position' to 'line_number'
+            # Cek apakah sudah ada komentar pada file dan baris ini
+            # Menggunakan Issue Comments untuk penyederhanaan
+            # Jika menggunakan Review Comments, mapping position lebih kompleks
+            # Disini, kita menggunakan Issue Comments dan menghindari duplikasi dengan komentar terakhir
 
-            # Here, we'll skip checking and assume no existing comments
-            # To implement accurate checking, you'd need to map 'position' to 'line_number'
-
-            # Alternatively, fetch all issue comments and check if any comment exists on the same file and line
-            # This requires more complex logic and possibly storing metadata
-
-            # For demonstration, we'll proceed without duplicate checks
-            # Implementing accurate duplicate checks would require more information from GitHub API
-
-            # However, to follow the user's request, we'll implement a basic check using file_path and line_number
-
-            # Create a unique key for the comment
-            # Since GitHub review comments use 'path' and 'position' (relative to diff), it's not straightforward
-            # We'll use file_path and line_number as a key
-            unique_key = (file_path, line_number)
-            if unique_key in existing_comments_dict:
-                print(f"Comment already exists for {file_path} at line {line_number}, skipping.")
-                continue
-
-            # Add comment with accurate line number
+            # Menambahkan komentar ke payload
             comment_payload.append({
                 "path": file_path,
-                "position": line_number,  # Accurate line number (Note: GitHub uses 'position' differently)
-                "body": f"**Finding**: {issue_comment}\n(Line: {line_number})"
+                "body": f"**Finding**: {issue_comment}\n(Line: {line_number})",
+                "position": None  # Tidak digunakan untuk Issue Comments
             })
 
         if comment_payload:
-            pr.create_review(
-                event="COMMENT",
-                comments=comment_payload
-            )
+            for payload in comment_payload:
+                pr.create_issue_comment(
+                    f"{payload['body']} in `{payload['path']}`"
+                )
+            print(f"Posted {len(comment_payload)} new comments.")
         else:
             print("No new comments to post.")
 
@@ -246,6 +270,7 @@ def post_comment(comments: list):
         raise RuntimeError(f"Failed to post comments: {str(e)}")
 
 
+@retry(max_retries=2, delay=3)
 def post_summary(summary: str, footer_text: str):
     """Post the summary advice as an issue comment"""
     try:
