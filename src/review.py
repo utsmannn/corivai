@@ -8,6 +8,7 @@ from github import Github
 import google.generativeai as genai
 from google.ai.generativelanguage_v1beta.types import content
 from functools import wraps
+import re
 
 
 def retry(max_retries=3, delay=2):
@@ -175,31 +176,46 @@ Analyze this code diff and generate structured feedback:
 
 @retry(max_retries=2, delay=3)
 def post_comment(comments: list, pr, repo_name, github_token, current_head_sha):
-    """Post comments by finding accurate line numbers based on line_string and avoiding duplicates"""
+    """Post review comments by finding accurate positions based on line_string and avoiding duplicates"""
     try:
-        # Fetch existing issue comments to track last processed SHA
-        existing_issue_comments = pr.get_issue_comments()
-        last_processed_sha = None
-        for comment in existing_issue_comments:
-            if comment.body.startswith("@ai-reviewer Last Processed SHA:"):
-                last_processed_sha = comment.body.split(":")[1].strip()
-                break
-
-        # Cek apakah sudah ada commit baru yang belum diproses
-        if last_processed_sha == current_head_sha:
-            print("No new commits to process. Skipping diff processing to avoid duplication.")
-            return
-
-        # Setelah memastikan ada commit baru, proses komentar
-        # Fetch existing review comments
+        # Fetch existing review comments to prevent duplicates
         existing_review_comments = pr.get_review_comments()
         existing_comments_set = set()
         for comment in existing_review_comments:
-            # Mengambil file path dan line position dari komentar review
             existing_comments_set.add((comment.path, comment.original_position))
 
         comment_payload = []
 
+        # Parsing the diff to map line_number to position
+        diff_lines = pr.diff.split('\n')
+        file_diff_mapping = {}
+        current_file = None
+        position = 0
+
+        for line in diff_lines:
+            if line.startswith('diff --git'):
+                current_file = re.findall(r'diff --git a/(.+?) b/(.+)', line)[0][1]
+                file_diff_mapping[current_file] = []
+                position = 0
+            elif line.startswith('@@'):
+                # Example: @@ -1,4 +1,5 @@
+                hunk_header = re.findall(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', line)
+                if hunk_header:
+                    start_line = int(hunk_header[0][0])
+                    file_diff_mapping[current_file].append({
+                        'start_line': start_line,
+                        'lines': []
+                    })
+            elif current_file and not line.startswith('diff --git'):
+                # Add lines to the current hunk
+                if line.startswith('+') and not line.startswith('+++'):
+                    file_diff_mapping[current_file][-1]['lines'].append(line[1:].rstrip('\n'))
+                elif line.startswith('-') and not line.startswith('---'):
+                    pass  # Removed lines
+                elif line.startswith(' '):
+                    pass  # Context lines
+
+        # Mapping line_string to line_number
         for comment in comments:
             file_path = comment['file_path']
             line_string = comment['line_string']
@@ -228,28 +244,27 @@ def post_comment(comments: list, pr, repo_name, github_token, current_head_sha):
                 print(f"Line string '{line_string}' not found in file {file_path}.")
                 continue
 
-            # Cek apakah sudah ada komentar pada file dan baris ini
-            # Karena menggunakan review comments, kita perlu menentukan 'position' yang tepat
-            # Namun, tanpa mapping yang tepat antara line_number dan position dalam diff, kita akan lewati pengecekan ini
-            # Sebagai gantinya, gunakan issue comments untuk mencegah duplikasi
+            # Map line_number to position in diff
+            position_in_diff = None
+            if file_path in file_diff_mapping:
+                for hunk in file_diff_mapping[file_path]:
+                    if hunk['start_line'] <= line_number < hunk['start_line'] + len(hunk['lines']):
+                        position_in_diff = hunk['start_line'] + (line_number - hunk['start_line']) + 1
+                        break
 
-            # Cek apakah sudah ada issue comment pada file dan line_number
-            duplicate = False
-            for existing_comment in existing_issue_comments:
-                if existing_comment.body.startswith("**Finding**") and \
-                   f"Line: {line_number}" in existing_comment.body and \
-                   f"in `{file_path}`" in existing_comment.body:
-                    duplicate = True
-                    print(f"Duplicate comment found for {file_path} at line {line_number}, skipping.")
-                    break
-
-            if duplicate:
+            if position_in_diff is None:
+                print(f"Could not map line number {line_number} to position in diff for file {file_path}.")
                 continue
 
-            # Add comment payload
+            # Cek apakah sudah ada komentar pada file dan posisi ini
+            if (file_path, position_in_diff) in existing_comments_set:
+                print(f"Comment already exists for {file_path} at position {position_in_diff}, skipping.")
+                continue
+
+            # Tambahkan ke payload
             comment_payload.append({
                 "path": file_path,
-                "position": line_number,  # Accurate line number (Note: GitHub uses 'position' differently)
+                "position": position_in_diff,
                 "body": f"**Finding**: {issue_comment}\n(Line: {line_number})"
             })
 
@@ -258,10 +273,7 @@ def post_comment(comments: list, pr, repo_name, github_token, current_head_sha):
                 event="COMMENT",
                 comments=comment_payload
             )
-            print(f"Posted {len(comment_payload)} new comments.")
-
-            # Update the last processed SHA
-            pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
+            print(f"Posted {len(comment_payload)} new review comments.")
         else:
             print("No new comments to post.")
 
@@ -306,6 +318,18 @@ def main():
         # Get current head SHA
         current_head_sha = pr.head.sha
 
+        # Check last processed SHA
+        existing_issue_comments = pr.get_issue_comments()
+        last_processed_sha = None
+        for comment in existing_issue_comments:
+            if comment.body.startswith("@ai-reviewer Last Processed SHA:"):
+                last_processed_sha = comment.body.split(":")[1].strip()
+                break
+
+        if last_processed_sha == current_head_sha:
+            print("No new commits to process. Skipping diff processing to avoid duplication.")
+            return
+
         # Generate review
         review_data = generate_review(diff_content, model_name, custom_instructions)
 
@@ -316,7 +340,7 @@ def main():
         print(review_data)
         print("Debug Review Data End")
 
-        # Post individual comments and update SHA
+        # Post individual comments
         post_comment(review_data['response'], pr, repo_name, github_token, current_head_sha)
 
         print("✅ Review completed successfully")
