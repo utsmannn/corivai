@@ -23,7 +23,7 @@ jobs:
           echo "Isi review.py:"
 
       - name: Run Code Review
-        uses: ./.github/actions/code-reviewer
+        uses: ./
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
