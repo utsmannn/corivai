@@ -320,33 +320,34 @@ def main():
             print(f"⚠️ Diff size ({len(overall_diff)} bytes) exceeds limit")
             return
 
-        # Generate review for overall diff
-        overall_review = generate_review(overall_diff, model_name, custom_instructions)
+        if commit_diffs:
+            # Process only the last two commit diffs
+            for commit_diff in commit_diffs:
+                print(f"Processing commit: {commit_diff['commit_sha']} - {commit_diff['commit_message']}")
+                commit_review = generate_review(commit_diff['diff'], model_name, custom_instructions)
 
-        # Post summary for overall review
-        post_summary(overall_review['summary_advice'], footer_text)
+                # Post summary for commit review
+                post_summary(commit_review['summary_advice'], footer_text)
 
-        print("Debug Overall Review Data:")
-        print(overall_review)
-        print("Debug Overall Review Data End")
+                print("Debug Commit Review Data:")
+                print(commit_review)
+                print("Debug Commit Review Data End")
 
-        # Post individual comments for overall diff
-        post_comment(overall_review['response'])
+                # Post individual comments for commit diff
+                post_comment(commit_review['response'])
+        else:
+            # Process the overall diff
+            overall_review = generate_review(overall_diff, model_name, custom_instructions)
 
-        # Generate and post reviews for each of the last two commit diffs
-        for commit_diff in commit_diffs:
-            print(f"Processing commit: {commit_diff['commit_sha']} - {commit_diff['commit_message']}")
-            commit_review = generate_review(commit_diff['diff'], model_name, custom_instructions)
+            # Post summary for overall review
+            post_summary(overall_review['summary_advice'], footer_text)
 
-            # Post summary for commit review
-            post_summary(commit_review['summary_advice'], footer_text)
+            print("Debug Overall Review Data:")
+            print(overall_review)
+            print("Debug Overall Review Data End")
 
-            print("Debug Commit Review Data:")
-            print(commit_review)
-            print("Debug Commit Review Data End")
-
-            # Post individual comments for commit diff
-            post_comment(commit_review['response'])
+            # Post individual comments for overall diff
+            post_comment(overall_review['response'])
 
         print("✅ Review completed successfully")
 
