@@ -10,27 +10,6 @@ from google.ai.generativelanguage_v1beta.types import content
 from functools import wraps
 
 
-def retry(max_retries=3, delay=2):
-    """Retry decorator with exponential backoff"""
-
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            retries = 0
-            while retries < max_retries:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    retries += 1
-                    if retries >= max_retries:
-                        raise
-                    time.sleep(delay ** retries)
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
 
 def get_pr_number() -> int:
     """Retrieve the PR number from environment variables"""
@@ -46,7 +25,6 @@ def sanitize_input(text: str, max_length=2000) -> str:
     return html.escape(text[:max_length]) if text else ""
 
 
-@retry(max_retries=3, delay=2)
 def get_pr_diff() -> str:
     """Retrieve PR diff from GitHub API"""
     try:
@@ -76,7 +54,6 @@ def get_pr_diff() -> str:
         raise RuntimeError(f"Failed to fetch PR diff: {str(e)}")
 
 
-@retry(max_retries=3, delay=2)
 def generate_review(diff: str, model_name: str, custom_instructions: str) -> dict:
     """Generate structured code review using Gemini"""
     print("diff:")
@@ -173,7 +150,6 @@ Analyze this code diff and generate structured feedback:
         raise RuntimeError(f"Review generation failed: {str(e)}")
 
 
-@retry(max_retries=2, delay=3)
 def post_comment(comments: list):
     """Post comments by finding accurate line numbers based on line_string and avoiding duplicates"""
     try:
@@ -270,7 +246,6 @@ def post_comment(comments: list):
         raise RuntimeError(f"Failed to post comments: {str(e)}")
 
 
-@retry(max_retries=2, delay=3)
 def post_summary(summary: str, footer_text: str):
     """Post the summary advice as an issue comment"""
     try:
