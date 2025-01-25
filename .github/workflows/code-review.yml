@@ -17,6 +17,7 @@ jobs:
 
       - name: List files
         run: |
+          pwd
           echo "Direktori Action:"
           ls -la .
           echo "Isi review.py:"
