@@ -27,4 +27,8 @@ jobs:
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          max-diff-size: 50000
+          max-diff-size: 500000
+          model-name: learnlm-1.5-pro-experimental
+          custom-instructions: |
+            Using bahasa indonesia,
+            Extreme review.

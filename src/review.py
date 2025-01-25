@@ -49,8 +49,7 @@ class PRReviewer:
         self.repo_name = os.getenv('GITHUB_REPOSITORY')
         self.model_name = os.getenv('INPUT_MODEL_NAME', 'gemini-1.5-pro-latest')
         self.max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '500000'))
-        self.footer_text = 'Code Review Report by Coriva'
-        self.summary_text = f'### AI Review using Gemini with Coriva.\nModel: ({self.model_name})'
+        self.summary_text = f'## 📝 Code Review by Coriva.\nModel: ({self.model_name})'
         self.custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
 
         if not all([self.github_token, self.repo_name]):
