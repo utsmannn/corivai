@@ -34,5 +34,5 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
-      run: python $GITHUB_ACTION_PATH/../src/review.py
+      run: python src/review.py
       shell: bash
