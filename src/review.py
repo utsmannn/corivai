@@ -162,11 +162,11 @@ def post_comment(comment: dict):
         repo = g.get_repo(repo_name)
         pr = repo.get_pull(pr_number)
 
-        pr.create_issue_comment(
+        pr.create_review_comment(
             body=f"**Code Review Finding**\n\n{comment['comment']}",
-            commit_id=pr.head.sha,
+            commit=pr.head.commit,  # Gunakan objek Commit, bukan SHA string
             path=comment['file_path'],
-            line=comment['line'] or None
+            line=comment['line']  # Position harus sesuai dengan diff
         )
 
     except Exception as e:
