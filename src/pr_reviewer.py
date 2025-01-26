@@ -1,4 +1,6 @@
 import os
+import time
+
 import requests
 import html
 import base64
@@ -189,9 +191,8 @@ Model: {self.model_name}
 
 '''
 
-            pr.create_issue_comment(summary_comment)
-
-            pr.create_review(event="COMMENT", comments=comment_payload)
+            pr.create_review(event="COMMENT", body=summary_comment, comments=comment_payload)
+            time.sleep(2)
             pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
             logger.info(f"Posted {len(comment_payload)} new review comments")
 
