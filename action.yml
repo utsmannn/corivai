@@ -35,5 +35,5 @@ runs:
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
         INPUT_MAX_DIFF_SIZE: ${{ inputs.max-diff-size }}
-      run: python src/review.py
+      run: python src/main.py
       shell: bash
