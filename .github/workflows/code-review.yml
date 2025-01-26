@@ -28,7 +28,7 @@ jobs:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           max-diff-size: 500000
-          model-name: gemini-1.5-flash
+          model-name: gemini-2.0-flash-thinking-exp-01-21
           custom-instructions: |
             Using bahasa indonesia,
             Extreme review.
