@@ -180,10 +180,11 @@ Analyze this code diff and generate structured feedback:
 
 {summary}
 
-```
-Code review by Coriva
+---
+
+Code review by @corivai-review
 Model: {self.model_name}
-```
+
 
 '''
 
@@ -200,7 +201,7 @@ Model: {self.model_name}
             current_head_sha = pr.head.sha
 
             for comment in pr.get_issue_comments():
-                if f"@ai-reviewer Last Processed SHA: {current_head_sha}" in comment.body:
+                if f"@corivai-review Last Processed SHA: {current_head_sha}" in comment.body:
                     logger.info("No new commits to process")
                     return
 
