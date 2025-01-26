@@ -124,7 +124,7 @@ Analyze this code diff and generate structured feedback:
             ])
 
             return f"""**Review Summary Task**
-    Please analyze these code review comments and provide a concise summary:
+    Please analyze these code review comments and provide a concise summary using language same as use review comments:
 
     {comments_text}
 
@@ -172,7 +172,7 @@ Analyze this code diff and generate structured feedback:
             summary_prompt = self._build_summary_prompt(comment_payload)
             summary = self.summary_generator.generate(summary_prompt)
 
-            pr.create_issue_comment(f"{summary}")
+            pr.create_issue_comment(f"## 📝 Code Review Report\n\n{summary}\n\n```Code review by Coriva\nModel: ({self.model_name})```")
 
             pr.create_review(event="COMMENT", comments=comment_payload)
             pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
