@@ -39,26 +39,6 @@ class PRReviewer:
 
         genai.configure(api_key=genai_api_key)
         self.generator = GeminiReviewGenerator(self.model_name)
-        self.summary_generator = GeminiSummaryGenerator(self.model_name)
-
-
-    def close(self):
-        """Menutup semua klien gRPC dengan benar."""
-        try:
-            if hasattr(self.generator, 'close'):
-                self.generator.close()
-                logger.info("Generator gRPC ditutup.")
-            if hasattr(self.summary_generator, 'close'):
-                self.summary_generator.close()
-                logger.info("Summary generator gRPC ditutup.")
-        except Exception as e:
-            logger.error(f"Error saat menutup klien gRPC: {str(e)}")
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
 
     def get_pr_number(self) -> int:
         pr_ref = os.getenv('GITHUB_REF')
@@ -136,26 +116,6 @@ Analyze this code diff and generate structured feedback:
 {self.custom_instructions}
 """
 
-    def _build_summary_prompt(self, comment_payload: List[dict]) -> str:
-        comments_text = "\n".join([
-            f"- In file {comment['path']}: {comment['body']}"
-            for comment in comment_payload
-        ])
-
-        return f"""**Review Summary Task**
-    Please analyze these code review comments and provide a concise summary using language same as review comments language:
-    {comments_text}
-    
-    **Requirements:**
-    1. Using language same as review comments language
-    2. Markdown format
-
-    **Key points to include:**
-    1. Overall assessment
-    2. Main areas for improvement
-    3. Positive aspects found
-    4. Priority recommendations"""
-
     def _find_position_in_diff(self, file_path: str, line_string: str, file_hunks: dict) -> Optional[int]:
         if file_path not in file_hunks:
             return None
@@ -188,24 +148,6 @@ Analyze this code diff and generate structured feedback:
         )))
 
         if comment_payload:
-            summary_prompt = self._build_summary_prompt(comment_payload)
-            summary = self.summary_generator.generate(summary_prompt)
-
-            summary_comment = f'''
-## 📝 Code Review Report
-
-{summary}
-
----
-
-Code review by @corivai-review
-Model: {self.model_name}
-
-
-'''
-
-            pr.create_issue_comment(summary_comment)
-
             pr.create_review(event="COMMENT", comments=comment_payload)
             pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
             logger.info(f"Posted {len(comment_payload)} new review comments")
