@@ -152,25 +152,21 @@ Analyze this code diff and generate structured feedback:
         print(f"response -> {review_response.comments}")
         existing_comments = {(c.path, c.original_position) for c in pr.get_review_comments()}
         file_hunks = self.parse_diff(diff_content)
-        comment_payload = []
-
-        for comment in review_response.comments:
-            file_path = comment.file_path
-            line_string = comment.line_string
-
-            file_lines = self.get_file_content(file_path, current_head_sha)
-            if not file_lines:
-                continue
-
-            position = self._find_position_in_diff(file_path, line_string, file_hunks)
-            if not position or (file_path, position) in existing_comments:
-                continue
-
-            comment_payload.append({
-                "path": file_path,
+        comment_payload = list(filter(None, map(
+            lambda comment: {
+                "path": comment.file_path,
                 "position": position,
                 "body": f"**Finding**: {comment.comment}"
-            })
+            } if (position := self._find_position_in_diff(
+                comment.file_path,
+                comment.line_string,
+                file_hunks
+            )) and self.get_file_content(
+                comment.file_path,
+                current_head_sha
+            ) and (comment.file_path, position) not in existing_comments else None,
+            review_response.comments
+        )))
 
         if comment_payload:
             summary_prompt = self._build_summary_prompt(comment_payload)
