@@ -3,6 +3,8 @@ name: Code Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
 
 jobs:
   review:
@@ -10,6 +12,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: read
 
     steps:
       - name: Checkout code
@@ -22,6 +25,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           max-diff-size: 500000
           model-name: gemini-1.5-flash
+          issue-number: ${{ github.event.issue.number }}
           custom-instructions: |
             Using bahasa indonesia,
             Extreme review.
