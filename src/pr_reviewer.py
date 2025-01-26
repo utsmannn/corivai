@@ -176,7 +176,7 @@ Analyze this code diff and generate structured feedback:
 
         print("wait....")
         time.sleep(3)
-        print(f"execute.... -> {len(comment_payload)}")
+        print(f"execute.... -> {len(comment_payload)} | exiting -> {len(existing_comments)}")
 
 
 
