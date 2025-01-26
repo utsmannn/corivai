@@ -7,7 +7,10 @@ import re
 from typing import Dict, List, Optional
 
 from github import Github
-from src import *
+from . import retry
+from . import ReviewError
+from . import ReviewResponse
+from . import ResponseGenerator, GeminiGenerator
 
 logger = logging.getLogger(__name__)
 

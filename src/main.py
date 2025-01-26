@@ -1,17 +1,7 @@
 import sys
 from pathlib import Path
 
-from src import *
-
-file = Path(__file__).resolve()
-parent, root = file.parent, file.parents[1]
-sys.path.append(str(root))
-
-try:
-    sys.path.remove(str(parent))
-except ValueError: # Already removed
-    pass
-
+from . import PRReviewer
 import logging
 
 logging.basicConfig(level=logging.INFO)
