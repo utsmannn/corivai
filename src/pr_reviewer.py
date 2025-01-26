@@ -189,8 +189,6 @@ Analyze this code diff and generate structured feedback:
                 print("asuuuuu cuaks continue 2 ->")
                 continue
 
-            print(f"cuaks file {file_path} -> position -> {position} | {line_string} | {file_hunks}")
-
             comment_payload.append({
                 "path": file_path,
                 "position": position,
@@ -198,11 +196,10 @@ Analyze this code diff and generate structured feedback:
             })
 
         print("wait....")
-        time.sleep(3)
         print(f"execute.... -> {len(comment_payload)} | exiting -> {len(existing_comments)}")
 
 
-        if comment_payload:
+        if len(comment_payload) > 0:
             # summary_prompt = self._build_summary_prompt(comment_payload)
 #             summary = self.summary_generator.generate(summary_prompt)
 #
@@ -220,6 +217,7 @@ Analyze this code diff and generate structured feedback:
 # '''
 
             try:
+                print("create pr -->")
                 pr.create_review(event="COMMENT", comments=comment_payload)
                 time.sleep(2)
                 pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
