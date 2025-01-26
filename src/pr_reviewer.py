@@ -149,6 +149,7 @@ Analyze this code diff and generate structured feedback:
 
     @retry(max_retries=2, delay=3)
     def post_comments(self, review_response: ReviewResponse, pr, current_head_sha: str, diff_content: str) -> None:
+        print(f"response -> {review_response.comments}")
         existing_comments = {(c.path, c.original_position) for c in pr.get_review_comments()}
         file_hunks = self.parse_diff(diff_content)
         comment_payload = []

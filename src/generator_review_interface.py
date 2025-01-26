@@ -45,6 +45,7 @@ class GeminiReviewGenerator(ResponseReviewGenerator):
         import json
 
         response = self.model.generate_content(diff)
+        print(f"asuu response -> {response}")
         result = json.loads(response.text.strip().replace('```json', '').replace('```', ''))
 
         comments = [
