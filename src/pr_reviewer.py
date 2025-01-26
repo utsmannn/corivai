@@ -189,6 +189,8 @@ Analyze this code diff and generate structured feedback:
                 print("asuuuuu cuaks continue 2 ->")
                 continue
 
+            print(f"asuu cuaksssss -> | {file_path} | ${position} | {line_string} | ")
+
             comment_payload.append({
                 "path": file_path,
                 "position": position,
