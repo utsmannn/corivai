@@ -176,7 +176,9 @@ Analyze this code diff and generate structured feedback:
 
         print("wait....")
         time.sleep(3)
-        print("execute....")
+        print(f"execute.... -> {len(comment_payload)}")
+
+
 
         if comment_payload:
             # summary_prompt = self._build_summary_prompt(comment_payload)
@@ -194,10 +196,14 @@ Analyze this code diff and generate structured feedback:
 #
 #
 # '''
-            pr.create_review(event="COMMENT", comments=comment_payload)
-            time.sleep(2)
-            pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
-            logger.info(f"Posted {len(comment_payload)} new review comments")
+
+            try:
+                pr.create_review(event="COMMENT", comments=comment_payload)
+                time.sleep(2)
+                pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
+                logger.info(f"Posted {len(comment_payload)} new review comments")
+            except Exception as e:
+                logger.error(f"Critical error in commented review: {str(e)}")
 
     def process_pr(self) -> None:
         try:
