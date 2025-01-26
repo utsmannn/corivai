@@ -170,6 +170,8 @@ Analyze this code diff and generate structured feedback:
                 print("asuuuuu cuaks continue 2 ->")
                 continue
 
+            print(f"cuaks file {file_path} -> position -> {position}")
+
             comment_payload.append({
                 "path": file_path,
                 "position": position,
