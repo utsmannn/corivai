@@ -8,27 +8,45 @@ on:
 
 jobs:
   track_comments:
-    if: |
-      github.event_name == 'issue_comment'
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request
     runs-on: ubuntu-latest
     permissions:
       issues: read
     steps:
-      - name: Debug event
+      - name: Debug Event
         run: |
           echo "Event type: ${{ github.event_name }}"
-          echo "Comment type: ${{ github.event.comment.node_id }}"
+          echo "Comment node_id: ${{ github.event.comment.node_id }}"
+          echo "In reply to ID: ${{ github.event.comment.in_reply_to_id }}"
           echo "Event payload:"
           cat $GITHUB_EVENT_PATH
 
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Track Comments
-        uses: ./
+      - name: Check if Comment is a Reply
+        id: check_reply
+        uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
+          script: |
+            const comment = await github.rest.issues.getComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+            });
+
+            if (comment.data.in_reply_to_id) {
+              return { isReply: true };
+            } else {
+              return { isReply: false };
+            }
+
+      - name: Track Reply Comment
+        if: steps.check_reply.outputs.isReply == 'true'
+        run: |
+          echo "Komentar ini adalah balasan pada PR #${{ github.event.issue.number }}"
+          # Tambahkan logika tracking Anda di sini
+          # Misalnya, memanggil script atau action lain
 
   review:
     if: github.event_name == 'pull_request'
