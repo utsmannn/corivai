@@ -174,6 +174,10 @@ Analyze this code diff and generate structured feedback:
                 "body": f"**Finding**: {comment.comment}"
             })
 
+        print("wait....")
+        time.sleep(3)
+        print("execute....")
+
         if comment_payload:
             summary_prompt = self._build_summary_prompt(comment_payload)
             summary = self.summary_generator.generate(summary_prompt)
