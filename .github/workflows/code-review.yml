@@ -7,13 +7,29 @@ on:
     types: [created]
 
 jobs:
+  track_comments:
+    if: |
+      github.event_name == 'issue_comment' && 
+      github.event.comment.in_reply_to_id != null
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Track Comments
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+
   review:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      issues: read
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,7 +41,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           max-diff-size: 500000
           model-name: gemini-1.5-flash
-          issue-number: ${{ github.event.issue.number }}
           custom-instructions: |
             Using bahasa indonesia,
             Extreme review.
