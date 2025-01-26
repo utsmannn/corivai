@@ -154,6 +154,9 @@ Analyze this code diff and generate structured feedback:
         print(f"response -> {review_response.comments}")
         existing_comments = {(c.path, c.original_position) for c in pr.get_review_comments()}
         file_hunks = self.parse_diff(diff_content)
+        print("file hunk:")
+        print(file_hunks)
+        print("file hunk:")
         comment_payload = []
 
         for comment in review_response.comments:
