@@ -1,19 +1,18 @@
-import os
-import requests
-import html
 import base64
+import html
 import logging
+import os
 import re
-import google.generativeai as genai
 from typing import Dict, List, Optional
 
+import google.generativeai as genai
+import requests
 from github import Github
 
-from src import GeminiSummaryGenerator
 from src.decorators import retry
 from src.exceptions import ReviewError
+from src.generator_review_interface import GeminiReviewGenerator
 from src.models import ReviewResponse
-from src.generator_review_interface import ResponseReviewGenerator, GeminiReviewGenerator
 
 logger = logging.getLogger(__name__)
 
