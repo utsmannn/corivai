@@ -166,7 +166,7 @@ Analyze this code diff and generate structured feedback:
                 continue
 
             position = self._find_position_in_diff(file_path, line_string, file_hunks)
-            if not position or (file_path, position) in existing_comments:
+            if len(existing_comments) > 0 and not position or (file_path, position) in existing_comments:
                 print("asuuuuu cuaks continue 2 ->")
                 continue
 
@@ -179,7 +179,6 @@ Analyze this code diff and generate structured feedback:
         print("wait....")
         time.sleep(3)
         print(f"execute.... -> {len(comment_payload)} | exiting -> {len(existing_comments)}")
-
 
 
         if comment_payload:
