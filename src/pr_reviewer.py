@@ -191,7 +191,7 @@ Model: {self.model_name}
             pr.create_issue_comment(summary_comment)
 
             pr.create_review(event="COMMENT", comments=comment_payload)
-            pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
+            pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
             logger.info(f"Posted {len(comment_payload)} new review comments")
 
     def process_pr(self) -> None:
