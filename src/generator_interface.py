@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from . import ReviewResponse, ReviewComment
+from src.models import ReviewResponse, ReviewComment
 
 
 class ResponseGenerator(ABC):

@@ -1,8 +1,8 @@
-from .exceptions import ReviewError
-from .decorators import retry
-from .models import ReviewComment, ReviewResponse
-from .generator_interface import ResponseGenerator, GeminiGenerator
-from .pr_reviewer import PRReviewer
+from src.exceptions import ReviewError
+from src.decorators import retry
+from src.models import ReviewComment, ReviewResponse
+from src.generator_interface import ResponseGenerator, GeminiGenerator
+from src.pr_reviewer import PRReviewer
 
 __all__ = [
     'ReviewError',

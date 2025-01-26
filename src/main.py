@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from . import PRReviewer
+from src.pr_reviewer import PRReviewer
 import logging
 
 logging.basicConfig(level=logging.INFO)
