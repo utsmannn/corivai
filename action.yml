@@ -15,6 +15,10 @@ inputs:
     description: 'Additional review instructions (Markdown supported)'
     required: false
     default: ''
+  max-diff-size:
+    description: 'Max size of diff for analysts'
+    required: false
+    default: '100000'
   issue-number:
     description: 'Issue number to track comments'
     required: false
