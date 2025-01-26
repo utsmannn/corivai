@@ -9,12 +9,18 @@ on:
 jobs:
   track_comments:
     if: |
-      github.event_name == 'issue_comment' && 
-      github.event.comment.in_reply_to_id != null
+      github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     permissions:
       issues: read
     steps:
+      - name: Debug event
+        run: |
+          echo "Event type: ${{ github.event_name }}"
+          echo "Comment type: ${{ github.event.comment.node_id }}"
+          echo "Event payload:"
+          cat $GITHUB_EVENT_PATH
+
       - name: Checkout code
         uses: actions/checkout@v4
 
