@@ -1,18 +1,18 @@
 from abc import ABC, abstractmethod
 from src.models import ReviewResponse, ReviewComment
+import google.generativeai as genai
+from google.ai.generativelanguage_v1beta.types import content
 
 
-class ResponseGenerator(ABC):
+class ResponseReviewGenerator(ABC):
     @abstractmethod
     def generate(self, diff: str) -> ReviewResponse:
         """Generate review comments from diff content"""
         pass
 
 
-class GeminiGenerator(ResponseGenerator):
+class GeminiReviewGenerator(ResponseReviewGenerator):
     def __init__(self, model_name: str):
-        import google.generativeai as genai
-        from google.ai.generativelanguage_v1beta.types import content
 
         self.generation_config = {
             "temperature": 1,

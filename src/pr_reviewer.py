@@ -4,13 +4,16 @@ import html
 import base64
 import logging
 import re
+import google.generativeai as genai
 from typing import Dict, List, Optional
 
 from github import Github
+
+from src import GeminiSummaryGenerator
 from src.decorators import retry
 from src.exceptions import ReviewError
 from src.models import ReviewResponse
-from src.generator_interface import ResponseGenerator, GeminiGenerator
+from src.generator_review_interface import ResponseReviewGenerator, GeminiReviewGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +37,9 @@ class PRReviewer:
         if not genai_api_key:
             raise ReviewError("Missing Gemini API key")
 
-        import google.generativeai as genai
         genai.configure(api_key=genai_api_key)
-        self.generator = GeminiGenerator(self.model_name)
+        self.generator = GeminiReviewGenerator(self.model_name)
+        self.summary_generator = GeminiSummaryGenerator(self.model_name)
 
     def get_pr_number(self) -> int:
         pr_ref = os.getenv('GITHUB_REF')
@@ -114,6 +117,23 @@ Analyze this code diff and generate structured feedback:
 {self.custom_instructions}
 """
 
+    def _build_summary_prompt(self, comment_payload: List[dict]) -> str:
+            comments_text = "\n".join([
+                f"- In file {comment['path']}: {comment['body']}"
+                for comment in comment_payload
+            ])
+
+            return f"""**Review Summary Task**
+    Please analyze these code review comments and provide a concise summary:
+
+    {comments_text}
+
+    Key points to include:
+    1. Overall assessment
+    2. Main areas for improvement
+    3. Positive aspects found
+    4. Priority recommendations"""
+
     def _find_position_in_diff(self, file_path: str, line_string: str, file_hunks: dict) -> Optional[int]:
         if file_path not in file_hunks:
             return None
@@ -149,6 +169,11 @@ Analyze this code diff and generate structured feedback:
             })
 
         if comment_payload:
+            summary_prompt = self._build_summary_prompt(comment_payload)
+            summary = self.summary_generator.generate(summary_prompt)
+
+            pr.create_issue_comment(f"{summary}")
+
             pr.create_review(event="COMMENT", comments=comment_payload)
             pr.create_issue_comment(f"@ai-reviewer Last Processed SHA: {current_head_sha}")
             logger.info(f"Posted {len(comment_payload)} new review comments")
