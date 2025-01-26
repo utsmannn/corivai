@@ -1,5 +1,8 @@
 import sys
 from pathlib import Path
+
+from src import *
+
 file = Path(__file__).resolve()
 parent, root = file.parent, file.parents[1]
 sys.path.append(str(root))
@@ -10,7 +13,6 @@ except ValueError: # Already removed
     pass
 
 import logging
-from .pr_reviewer import PRReviewer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
