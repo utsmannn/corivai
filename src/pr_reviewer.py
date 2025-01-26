@@ -139,14 +139,30 @@ Analyze this code diff and generate structured feedback:
     3. Positive aspects found
     4. Priority recommendations"""
 
-    def _find_position_in_diff(self, file_path: str, line_string: str, file_hunks: dict) -> Optional[int]:
-        if file_path not in file_hunks:
+    def _find_position_in_file(self, file_path: str, line_string: str) -> Optional[int]:
+        """
+        Mencari posisi baris tertentu dalam file.
+
+        Args:
+            file_path (str): Path ke file yang akan dicari.
+            line_string (str): String baris yang ingin dicari.
+
+        Returns:
+            Optional[int]: Nomor baris jika ditemukan, None jika tidak ditemukan atau file tidak ada.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                for line_number, line in enumerate(file, start=1):
+                    if line.strip() == line_string.strip():
+                        return line_number
+        except FileNotFoundError:
+            # File tidak ditemukan
+            return None
+        except IOError:
+            # Kesalahan saat membaca file
             return None
 
-        for hunk in file_hunks[file_path]:
-            for i, line in enumerate(hunk['lines']):
-                if line.strip() == line_string.strip():
-                    return hunk['start_line'] + i
+        # Jika tidak ditemukan
         return None
 
     @retry(max_retries=2, delay=3)
@@ -168,7 +184,7 @@ Analyze this code diff and generate structured feedback:
                 print("asuuuuu cuaks continue 1 ->")
                 continue
 
-            position = self._find_position_in_diff(file_path, line_string, file_hunks)
+            position = self._find_position_in_file(file_path, line_string)
             if len(existing_comments) > 0 and not position or (file_path, position) in existing_comments:
                 print("asuuuuu cuaks continue 2 ->")
                 continue
