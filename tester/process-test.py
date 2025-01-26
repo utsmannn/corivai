@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 
@@ -44,7 +45,7 @@ class UserData:
     def print_info(self):
         print(f"Name: {self.name}")
         print(f"Age: {self.age}")
-        print(f"Birth Year: {2024 - self.age}")  # Hardcoded year
+        print(f"Birth Year: {datetime.datetime.today().year - self.age}")  # Hardcoded year
 
 
 def main():
@@ -54,10 +55,6 @@ def main():
 
     # Test calculate_stats dengan empty list
     print(calculate_stats([]))
-
-    # Penggunaan eval yang berbahaya
-    result = eval("2 + 3 * 4")
-    print(result)
 
 
 if __name__ == "__main__":
