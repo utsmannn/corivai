@@ -162,10 +162,12 @@ Analyze this code diff and generate structured feedback:
 
             file_lines = self.get_file_content(file_path, current_head_sha)
             if not file_lines:
+                print("asuuuuu cuaks continue 1 ->")
                 continue
 
             position = self._find_position_in_diff(file_path, line_string, file_hunks)
             if not position or (file_path, position) in existing_comments:
+                print("asuuuuu cuaks continue 2 ->")
                 continue
 
             comment_payload.append({
