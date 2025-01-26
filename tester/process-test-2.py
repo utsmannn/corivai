@@ -5,6 +5,22 @@ def convert_temperature(value, unit):
     :param unit: str - 'C' for Celsius or 'F' for Fahrenheit.
     :return: float - Converted temperature.
     """
+
+
+
+
+
+    # asnlkanskldnasolifj tai kucadsasmklandlkan  olsandoif
+    # sldknmfklsnmdfkdsa
+
+
+    total = sum(numbers)
+    average = total / len(numbers)
+
+    # Tidak efisien
+    sorted_nums = sorted(numbers)
+    median = sorted_nums[len(sorted_nums) // 2]
+
     if unit == 'C':
         return (value * 9/5) + 32  # Celsius to Fahrenheit
     elif unit == 'F':
