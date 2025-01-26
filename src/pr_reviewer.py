@@ -41,6 +41,25 @@ class PRReviewer:
         self.generator = GeminiReviewGenerator(self.model_name)
         self.summary_generator = GeminiSummaryGenerator(self.model_name)
 
+
+    def close(self):
+        """Menutup semua klien gRPC dengan benar."""
+        try:
+            if hasattr(self.generator, 'close'):
+                self.generator.close()
+                logger.info("Generator gRPC ditutup.")
+            if hasattr(self.summary_generator, 'close'):
+                self.summary_generator.close()
+                logger.info("Summary generator gRPC ditutup.")
+        except Exception as e:
+            logger.error(f"Error saat menutup klien gRPC: {str(e)}")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def get_pr_number(self) -> int:
         pr_ref = os.getenv('GITHUB_REF')
         if not pr_ref:
