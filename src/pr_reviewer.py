@@ -124,11 +124,14 @@ Analyze this code diff and generate structured feedback:
         ])
 
         return f"""**Review Summary Task**
-    Please analyze these code review comments and provide a concise summary using language same as use review comments:
-
+    Please analyze these code review comments and provide a concise summary using language same as review comments language:
     {comments_text}
+    
+    **Requirements:**
+    1. Using language same as review comments language
+    2. Markdown format
 
-    Key points to include:
+    **Key points to include:**
     1. Overall assessment
     2. Main areas for improvement
     3. Positive aspects found
