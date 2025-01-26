@@ -179,23 +179,22 @@ Analyze this code diff and generate structured feedback:
         print("execute....")
 
         if comment_payload:
-            summary_prompt = self._build_summary_prompt(comment_payload)
-            summary = self.summary_generator.generate(summary_prompt)
-
-            summary_comment = f'''
-## 📝 Code Review Report
-
-{summary}
-
----
-
-Code review by @corivai-review
-Model: {self.model_name}
-
-
-'''
-
-            pr.create_review(event="COMMENT", body=summary_comment, comments=comment_payload)
+            # summary_prompt = self._build_summary_prompt(comment_payload)
+#             summary = self.summary_generator.generate(summary_prompt)
+#
+#             summary_comment = f'''
+# ## 📝 Code Review Report
+#
+# {summary}
+#
+# ---
+#
+# Code review by @corivai-review
+# Model: {self.model_name}
+#
+#
+# '''
+            pr.create_review(event="COMMENT", comments=comment_payload)
             time.sleep(2)
             pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
             logger.info(f"Posted {len(comment_payload)} new review comments")
