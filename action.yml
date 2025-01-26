@@ -15,6 +15,10 @@ inputs:
     description: 'Additional review instructions (Markdown supported)'
     required: false
     default: ''
+  issue-number:
+    description: 'Issue number to track comments'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -25,7 +29,9 @@ runs:
         python-version: '3.11'
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: |
+        pip install -r requirements.txt
+        pip install requests
       shell: bash
 
     - name: Execute review
@@ -34,5 +40,15 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
-      run: python review.py
+        INPUT_MAX_DIFF_SIZE: ${{ inputs.max-diff-size }}
+      run: python -m src.main
+      shell: bash
+
+    - name: Track Comments
+      if: inputs.issue-number != ''
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        ISSUE_NUMBER: ${{ inputs.issue-number }}
+        REPO: ${{ github.repository }}
+      run: python -m src.comment_tracker
       shell: bash

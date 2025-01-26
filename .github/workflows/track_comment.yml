@@ -1,0 +1,14 @@
+name: Test Issue Comment Trigger
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo Comment
+        run: |
+          echo "Komentar baru dibuat: ${{ github.event.comment.body }}"
+          

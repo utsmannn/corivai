@@ -1,4 +1,4 @@
-name: AI Code Review
+name: Code Review
 
 on:
   pull_request:
@@ -6,29 +6,22 @@ on:
 
 jobs:
   review:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Customized Review
-        uses: ./.github/actions/code-reviewer
+      - name: Run Code Review
+        uses: ./
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          model-name: 'gemini-1.5-pro-latest'
+          max-diff-size: 500000
+          model-name: gemini-1.5-flash
           custom-instructions: |
-            **Language-Specific Checks:**
-            - PEP8 compliance
-            - Type hint enforcement
-            - Proper async/await usage
-            - Pytest coverage >80%
-            
-            **Project-Specific Rules:**
-            - Validate configuration against schema
-            - Check for hardcoded secrets
-            - Verify logging consistency
+            Using bahasa indonesia,
+            Extreme review.
