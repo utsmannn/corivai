@@ -10,5 +10,5 @@ jobs:
     steps:
       - name: Echo Comment
         run: |
-          echo "Komentar baru dibuat: ${{ github.event.comment.body }}"
+          echo "new comment on : ${{ github.event.comment.body }}"
           
