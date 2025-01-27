@@ -1,4 +1,8 @@
-# Corivai - AI-Powered Code Review Assistant
+# 🚀 Corivai Github Action - AI Powered Code Review Assistant on your PR
+
+<p align="center">
+  <img src="img/header.png"/>
+</p>
 
 Corivai is a GitHub Action that provides automated code reviews and interactive discussions using various AI models. It
 not only reviews your pull requests but also engages in meaningful conversations through comments, offering explanations
