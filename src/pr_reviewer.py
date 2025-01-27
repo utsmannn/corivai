@@ -105,7 +105,7 @@ class PRReviewer:
     def create_structured_diff(self, diff_content: str) -> Dict:
         structured_diff = {"diff": []}
         current_file = None
-        current_line = 0
+        diff_position = 0  # Track position within the diff
 
         lines = diff_content.split('\n')
         i = 0
@@ -117,6 +117,7 @@ class PRReviewer:
                 match = re.match(r'diff --git a/(.+?) b/(.+)', line)
                 if match:
                     current_file = match.group(2)
+                    diff_position = 0  # Reset position for new file
                 i += 1
                 continue
 
@@ -125,9 +126,7 @@ class PRReviewer:
                 continue
 
             if line.startswith('@@'):
-                match = re.match(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@', line)
-                if match:
-                    current_line = int(match.group(1)) - 1
+                diff_position += 1  # Count the hunk header
                 i += 1
                 continue
 
@@ -139,14 +138,15 @@ class PRReviewer:
                         structured_diff["diff"].append({
                             "file_path": block['file_path'],
                             "changes": block['changes'],
-                            "line": current_line + (block['start_line'] - i) + 1,
+                            "line": diff_position + (block['start_line'] - i),  # Calculate position relative to diff
                             "comment": ""
                         })
 
-                added_lines = new_idx - i
-                current_line += added_lines
+                # Update diff position for the processed lines
+                diff_position += new_idx - i
                 i = new_idx
             else:
+                diff_position += 1
                 i += 1
 
         return structured_diff
@@ -164,9 +164,9 @@ class PRReviewer:
 
             github_comments = self.apply_review_comments(review_response, chunk)
 
-            print("\n asuuuu cuaks")
-            print(github_comments)
-            print("\n asuuuu cuaks")
+            logger.info("\n asuuuu cuaks")
+            logger.info(github_comments)
+            logger.info("\n asuuuu cuaks")
 
             if github_comments:
                 pr.create_review(
@@ -186,6 +186,12 @@ class PRReviewer:
             for diff_entry in diff_chunk["diff"]:
                 if (diff_entry["file_path"] == comment.file_path and
                         self._normalize_code(diff_entry["changes"]) == self._normalize_code(comment.line_string)):
+                    # Validate position before creating comment
+                    if diff_entry["line"] <= 0:
+                        logger.warning(
+                            f"Skipping comment for {comment.file_path}: Invalid position {diff_entry['line']}")
+                        continue
+
                     github_comments.append({
                         "path": comment.file_path,
                         "position": diff_entry["line"],
