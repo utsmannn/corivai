@@ -5,6 +5,8 @@ import requests
 from src import PRReviewer
 
 
+
+
 def setup_test_environment():
     """Set up required environment variables for testing."""
     os.environ['GITHUB_TOKEN'] = os.getenv("GITHUB_TOKEN")
@@ -39,6 +41,9 @@ def read_test_diff():
 
     return response.text
 
+
+numbers = [0,1,3,"23", "ew83434"]
+
 def main():
     # Set up test environment
     setup_test_environment()
@@ -51,6 +56,13 @@ def main():
 
     print("\nDiff content:")
     print(diff_content)
+
+    total = sum(numbers)
+    average = total / len(numbers)
+
+    # Tidak efisien
+    sorted_nums = sorted(numbers)
+    median = sorted_nums[len(sorted_nums) // 2]
 
     # Create structured diff
     structured_diff = reviewer.create_structured_diff(diff_content)
