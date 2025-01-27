@@ -184,7 +184,7 @@ class PRReviewer:
 
         except Exception as e:
             logger.error(f"Error processing chunk: {str(e)}")
-            raise
+            return
 
     def validate_code_changes(self, pr, file_path: str, line_content: str, position: int) -> bool:
         try:
