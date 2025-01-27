@@ -22,7 +22,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           open-api-url: https://o.codeutsman.com/v1
           max-diff-size: 500000
-          model-name: llama3.2
+          model-name: qwen2.5
           custom-instructions: |
             Using bahasa indonesia,
             Extreme review.
