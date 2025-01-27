@@ -89,7 +89,9 @@ jobs:
 ## Provider-Specific Configurations
 
 ### OpenAI (Default)
+
 See: https://platform.openai.com/docs/quickstart
+
 Models: https://platform.openai.com/docs/models
 
 ```yaml
@@ -102,7 +104,9 @@ Models: https://platform.openai.com/docs/models
  ```
 
 ### Google Gemini API
+
 See: https://ai.google.dev/gemini-api/docs/openai
+
 Models: https://ai.google.dev/gemini-api/docs/models/gemini
 
 ```yaml
@@ -116,6 +120,7 @@ Models: https://ai.google.dev/gemini-api/docs/models/gemini
 ```
 
 ### Ollama (Self-hosted or Cloud)
+
 See: https://ollama.com/blog/openai-compatibility
 
 ```yaml
@@ -129,7 +134,9 @@ See: https://ollama.com/blog/openai-compatibility
 ```
 
 ### DeepSeek
+
 See: https://api-docs.deepseek.com/
+
 Models: https://api-docs.deepseek.com/quick_start/pricing 
 
 ```yaml
