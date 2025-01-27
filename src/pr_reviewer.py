@@ -249,7 +249,7 @@ Diff to review:
             logger.debug(json.dumps(diff_data, indent=2))
 
             # Generate review
-            review_response = self.generate_review(diff_content)
+            review_response = self.generate_review(str(diff_data))
 
             # Process and post comments
             processed_comments = self.process_review_comments(review_response, diff_data)
