@@ -63,9 +63,6 @@ def get_review_comments():
 
         in_replies_to = [com for com in all_comment if com.in_reply_to_id == reply_to_id]
 
-        # print(f"cuaks system --> {parent.diff_hunk}")
-        # print(f"cuaks assistant ----> {parent.user.login}: {parent.body} | {parent.in_reply_to_id}")
-
         messages = [
             {
                 "role": "system",
@@ -89,14 +86,6 @@ def get_review_comments():
             comment_id=reply_to_id,
             body=response
         )
-
-        print("cuaks---")
-        print(response)
-        print("cuaks---")
-
-
-        # for com in in_replies_to:
-        #     print(f"cuaks user ----> {com.user.login}: {com.body} | {com.in_reply_to_id}")
 
 
 def main():
