@@ -62,9 +62,7 @@ class AIReviewGenerator(ResponseReviewGenerator):
                     "role": "user",
                     "content": diff
                 }
-            ],
-            temperature=0.2,
-            top_p=0.1
+            ]
         )
 
         # Extract and parse the JSON response
