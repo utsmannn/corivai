@@ -58,6 +58,6 @@ runs:
         COMMENT_ID: ${{ github.event.comment.id }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
-        REVIEW_THREAD_ID: ${{ github.event.comment.pull_request_review_thread_id }}
+        REVIEW_THREAD_ID: ${{ github.event.comment.pull_request_review_id }}
       run: python -m src.comment_processor
       shell: bash

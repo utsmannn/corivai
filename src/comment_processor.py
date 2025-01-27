@@ -23,6 +23,7 @@ def get_review_comments():
     token = os.environ['GITHUB_TOKEN']
     repo = os.environ['REPO']
     thread_id = os.environ['REVIEW_THREAD_ID']
+    commend_id = os.environ['COMMENT_ID']
 
     github = Github(token)
     repo = github.get_repo(repo)
@@ -30,14 +31,21 @@ def get_review_comments():
     pr_number = get_pr_number()
     pr = repo.get_pull(pr_number)
 
+    logger.info(f"cuaks comment id -> {commend_id}")
+    logger.info(f"cuaks thread id -> {thread_id}")
+
+
+    for rc in pr.get_review_comments():
+        logger.info(f"cuaks acuu --> {rc.pull_request_review_id}")
+
+    # for com in pr.get_review_comments()
 
     for com in pr.get_comments():
-        print(f"cuaksssss ---> | {com.pull_request_review_id} ---> {thread_id}")
+        logger.info(f"cuaksssss ---> | {com.pull_request_review_id} ---> {thread_id}")
 
-    comments = pr.get_comment(int(thread_id))
-    # reviews.pull_request_review_id
-
-    print(f"cuaks ---> | {comments.pull_request_review_id} | {thread_id}")
+    if thread_id:
+        comments = pr.get_comment(int(thread_id))
+        logger.info(f"cuaks ---> | {comments.pull_request_review_id} | {thread_id}")
 
     # headers = {
     #     'Authorization': f'token {token}',
