@@ -100,14 +100,14 @@ Models: https://platform.openai.com/docs/models
 
 ```yaml
 - name: AI Code Review
-  uses: utsmannn/corivai@v1
+  uses: utsmannn/corivai@v4
   with:
     reviewer-api-key: ${{ secrets.OPENAI_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
     model-name: 'gpt-3.5-turbo'
  ```
 
-### Google Gemini API
+### Google Gemini API (Low price recommended)
 
 See: https://ai.google.dev/gemini-api/docs/openai
 
@@ -115,7 +115,7 @@ Models: https://ai.google.dev/gemini-api/docs/models/gemini
 
 ```yaml
 - name: AI Code Review
-  uses: utsmannn/corivai@v1
+  uses: utsmannn/corivai@v4
   with:
     reviewer-api-key: ${{ secrets.GEMINI_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -129,7 +129,7 @@ See: https://ollama.com/blog/openai-compatibility
 
 ```yaml
 - name: AI Code Review
-  uses: utsmannn/corivai@v1
+  uses: utsmannn/corivai@v4
   with:
     reviewer-api-key: 'ollama'
     github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -145,7 +145,7 @@ Models: https://api-docs.deepseek.com/quick_start/pricing
 
 ```yaml
 - name: AI Code Review
-  uses: utsmannn/corivai@v1
+  uses: utsmannn/corivai@v4
   with:
     reviewer-api-key: ${{ secrets.DEEPSEEK_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -206,7 +206,7 @@ custom-instructions: |
 
 ```yaml
 - name: AI Code Review
-  uses: utsmannn/corivai@v1
+  uses: utsmannn/corivai@v4
   with:
     reviewer-api-key: ${{ secrets.REVIEWER_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
