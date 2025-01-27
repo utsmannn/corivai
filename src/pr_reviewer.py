@@ -1,18 +1,18 @@
-import os
-import logging
-import re
 import json
+import logging
+import os
+import re
 import time
-from typing import Dict, List, Optional, Tuple, Iterator
+from typing import Dict, List, Tuple, Iterator
 
 import requests
 from github import Github
 from github.PullRequest import PullRequest
 
-from src.exceptions import ReviewError
-from src.models import ReviewResponse, ReviewComment
-from src.generator_review_interface import AIReviewGenerator
 from src.decorators import retry
+from src.exceptions import ReviewError
+from src.generator_review_interface import AIReviewGenerator
+from src.models import ReviewResponse
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class PRReviewer:
         self.max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '500000'))
         self.custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
         self.chunk_size = 5
-        self.chunk_delay = 5  # seconds
+        self.chunk_delay = 5
 
         if not all([self.github_token, self.repo_name]):
             raise ReviewError("Missing required environment variables")
@@ -106,7 +106,7 @@ class PRReviewer:
     def create_structured_diff(self, pr: PullRequest, diff_content: str) -> Dict:
         structured_diff = {"diff": []}
         current_file = None
-        diff_position = 0  # Track position within the diff
+        diff_position = 0
 
         comments = pr.get_review_comments()
 
@@ -124,7 +124,7 @@ class PRReviewer:
                 match = re.match(r'diff --git a/(.+?) b/(.+)', line)
                 if match:
                     current_file = match.group(2)
-                    diff_position = 0  # Reset position for new file
+                    diff_position = 0
                 i += 1
                 continue
 
@@ -133,7 +133,7 @@ class PRReviewer:
                 continue
 
             if line.startswith('@@'):
-                diff_position += 1  # Count the hunk header
+                diff_position += 1
                 i += 1
                 continue
 
@@ -173,7 +173,6 @@ class PRReviewer:
             chunk_json = json.dumps(chunk, indent=2)
             review_response = self.generator.generate(chunk_json)
 
-            # Pass PR object to apply_review_comments
             github_comments = self.apply_review_comments(review_response, chunk, pr)
 
             if github_comments:
@@ -188,10 +187,6 @@ class PRReviewer:
             raise
 
     def validate_code_changes(self, pr, file_path: str, line_content: str, position: int) -> bool:
-        """
-        Validate if a specific code change already has a comment.
-        Returns True if the change needs a new comment, False otherwise.
-        """
         try:
             existing_reviews = pr.get_review_comments()
             normalized_content = self._normalize_code(line_content)
@@ -207,7 +202,6 @@ class PRReviewer:
             return True
 
     def apply_review_comments(self, review_response: ReviewResponse, diff_chunk: Dict, pr) -> List[dict]:
-        """Enhanced apply_review_comments with change validation."""
         github_comments = []
 
         for comment in review_response.comments:
@@ -215,13 +209,11 @@ class PRReviewer:
                 if (diff_entry["file_path"] == comment.file_path and
                         self._normalize_code(diff_entry["changes"]) == self._normalize_code(comment.line_string)):
 
-                    # Validate position
                     if diff_entry["line"] <= 0:
                         logger.warning(
                             f"Skipping comment for {comment.file_path}: Invalid position {diff_entry['line']}")
                         continue
 
-                    # Check if this change already has a comment
                     if not self.validate_code_changes(pr,
                                                       diff_entry["file_path"],
                                                       diff_entry["changes"],
@@ -248,19 +240,16 @@ class PRReviewer:
             pr = self.repo.get_pull(pr_number)
             current_head_sha = pr.head.sha
 
-            # Get and validate diff content
             diff_content = self.get_pr_diff(pr)
             if len(diff_content) > self.max_diff_size:
                 logger.warning(f"Diff size ({len(diff_content)} bytes) exceeds limit")
                 return
 
-            # Create structured diff
             structured_diff = self.create_structured_diff(pr, diff_content)
             total_chunks = (len(structured_diff["diff"]) + self.chunk_size - 1) // self.chunk_size
 
             logger.info(f"Processing {len(structured_diff['diff'])} changes in {total_chunks} chunks")
 
-            # Process each chunk
             for i, chunk in enumerate(self.chunk_diff_data(structured_diff), 1):
                 logger.info(f"Processing chunk {i}/{total_chunks}")
                 self.process_chunk(chunk, pr, current_head_sha)
@@ -269,7 +258,6 @@ class PRReviewer:
                     logger.debug(f"Waiting {self.chunk_delay} seconds before next chunk")
                     time.sleep(self.chunk_delay)
 
-            # Add completion comment
             pr.create_issue_comment(
                 f"@corivai-review Last Processed SHA: {current_head_sha}\n"
                 f"Review completed at: {time.strftime('%Y-%m-%d %H:%M:%S UTC')}"
