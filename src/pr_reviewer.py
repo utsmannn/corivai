@@ -49,6 +49,7 @@ class PRReviewer:
             'Accept': 'application/vnd.github.v3.diff'
         }
         url = f'https://api.github.com/repos/{self.repo_name}/pulls/{pr.number}'
+        print(f"\nurl repo ->\n{url}\n\n")
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.text
