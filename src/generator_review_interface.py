@@ -56,7 +56,7 @@ class AIReviewGenerator(ResponseReviewGenerator):
             messages=[
                 {
                     "role": "system",
-                    "content": f"You are a code review assistant. Analyze the provided diff and generate review comments"
+                    "content": f"You are a code review assistant. Analyze the provided diff and generate review comments. Give me the comment, line string and **corrected** file path"
                 },
                 {
                     "role": "user",

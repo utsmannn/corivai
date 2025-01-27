@@ -167,9 +167,20 @@ Analyze this code diff and generate structured feedback:
         # Jika tidak ditemukan
         return None
 
+    def _find_position_in_diff(self, file_path: str, line_string: str, file_hunks: dict) -> Optional[int]:
+        if file_path not in file_hunks:
+            return None
+
+        for hunk in file_hunks[file_path]:
+            for i, line in enumerate(hunk['lines']):
+                if line.strip() == line_string.strip():
+                    return hunk['start_line'] + i
+        return None
+
     @retry(max_retries=2, delay=3)
     def post_comments(self, review_response: ReviewResponse, pr, current_head_sha: str, diff_content: str) -> None:
         print(f"response -> {review_response.comments}")
+        # hunk = self.parse_diff(diff_content)
         existing_comments = {(c.path, c.original_position) for c in pr.get_review_comments()}
         comment_payload = []
 
