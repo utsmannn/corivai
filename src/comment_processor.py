@@ -41,7 +41,7 @@ def get_review_comments():
     if commend_id:
         comment = pr.get_comment(int(commend_id))
         reply_to_id = comment.in_reply_to_id
-        parent = pr.get_review(reply_to_id)
+        # parent = pr.get_comment(reply_to_id)
 
         in_replies_to = [com.in_reply_to_id for com in all_comment if com.in_reply_to_id == reply_to_id]
 
