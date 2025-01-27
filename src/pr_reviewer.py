@@ -150,11 +150,13 @@ Analyze this code diff and generate structured feedback:
             Optional[int]: Nomor baris jika ditemukan, None jika tidak ditemukan atau file tidak ada.
         """
         try:
+            print(f"cuakkss --> open file -> {file_path}")
             with open(file_path, 'r', encoding='utf-8') as file:
                 for line_number, line in enumerate(file, start=1):
                     if line.strip() == line_string.strip():
                         return line_number
         except FileNotFoundError:
+            print(f"cuaks gak ada file -> {file_path}")
             # File tidak ditemukan
             return None
         except IOError:
