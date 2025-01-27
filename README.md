@@ -13,12 +13,18 @@ and clarifications when needed.
 - Performance optimization suggestions
 - Coding style and consistency checks
 
+![corivai-1.gif](img/corivai-1.gif)
+
+
 ### Interactive Comment Responses
 
 - AI-powered responses to questions about its review comments
 - Detailed explanations of suggested changes
 - Technical discussions through comment threads
 - Contextual understanding of the code being discussed
+
+![corivai-2.gif](img/corivai-2.gif)
+
 
 ## Setup Instructions
 
@@ -27,6 +33,9 @@ and clarifications when needed.
 Add these secrets to your GitHub repository:
 
 - `REVIEWER_API_KEY`: Your API key for the chosen AI provider
+
+How to: https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository
+
 
 ### 2. Workflow Configuration
 
@@ -55,7 +64,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: AI Code Review
-        uses: utsmannn/corivai@v1
+        uses: utsmannn/corivai@v4
         with:
           reviewer-api-key: ${{ secrets.REVIEWER_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -80,6 +89,9 @@ jobs:
 ## Provider-Specific Configurations
 
 ### OpenAI (Default)
+See: https://platform.openai.com/docs/quickstart
+Models: https://platform.openai.com/docs/models
+
 ```yaml
 - name: AI Code Review
   uses: utsmannn/corivai@v1
@@ -90,6 +102,8 @@ jobs:
  ```
 
 ### Google Gemini API
+See: https://ai.google.dev/gemini-api/docs/openai
+Models: https://ai.google.dev/gemini-api/docs/models/gemini
 
 ```yaml
 - name: AI Code Review
@@ -102,6 +116,7 @@ jobs:
 ```
 
 ### Ollama (Self-hosted or Cloud)
+See: https://ollama.com/blog/openai-compatibility
 
 ```yaml
 - name: AI Code Review
@@ -114,6 +129,8 @@ jobs:
 ```
 
 ### DeepSeek
+See: https://api-docs.deepseek.com/
+Models: https://api-docs.deepseek.com/quick_start/pricing 
 
 ```yaml
 - name: AI Code Review
