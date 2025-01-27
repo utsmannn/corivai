@@ -7,7 +7,7 @@ from src import ReviewError
 from openai import OpenAI, BaseModel
 
 
-baseUrl = os.getenv('INPUT_OPEN-AI-URL')
+baseUrl = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
 apiKey = os.getenv('API_KEY')
 client = OpenAI(base_url=baseUrl, api_key=apiKey)
 model_name = os.getenv('INPUT_MODEL-NAME', '')

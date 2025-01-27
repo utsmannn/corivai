@@ -11,10 +11,10 @@ inputs:
     description: 'Gemini model name'
     required: true
     default: ''
-  open-ai-url:
+  openai-url:
     description: 'End point for OpenAI library compatibility'
-    required: true
-    default: ''
+    required: false
+    default: 'https://api.openai.com/v1'
   custom-instructions:
     description: 'Additional review instructions (Markdown supported)'
     required: false
@@ -43,7 +43,7 @@ runs:
       env:
         API_KEY: ${{ inputs.reviewer-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        INPUT_OPEN-AI-URL: ${{ inputs.open-ai-url }}
+        INPUT_OPENAI-URL: ${{ inputs.openai-url }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
         INPUT_MAX_DIFF_SIZE: ${{ inputs.max-diff-size }}
@@ -54,7 +54,7 @@ runs:
       if: github.event_name == 'pull_request_review_comment'
       env:
         API_KEY: ${{ inputs.reviewer-api-key }}
-        INPUT_OPEN-AI-URL: ${{ inputs.open-ai-url }}
+        INPUT_OPENAI-URL: ${{ inputs.openai-url }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         COMMENT_BODY: ${{ github.event.comment.body }}

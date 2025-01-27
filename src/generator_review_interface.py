@@ -23,7 +23,7 @@ class DiffResponse(BaseModel):
 
 class AIReviewGenerator(ResponseReviewGenerator):
     def __init__(self, model_name: str):
-        self.baseUrl = os.getenv('INPUT_OPEN-AI-URL')
+        self.baseUrl = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
         self.apiKey = os.getenv('API_KEY')
         self.client = OpenAI(base_url=self.baseUrl, api_key=self.apiKey)
         self.model_name = model_name

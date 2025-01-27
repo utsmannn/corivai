@@ -14,7 +14,7 @@ def setup_test_environment():
     os.environ['GITHUB_REF'] = 'refs/pull/53/merge'
     os.environ['INPUT_MODEL-NAME'] = 'qwen2.5-coder'
     os.environ['INPUT_MAX_DIFF_SIZE'] = '500000'
-    os.environ['INPUT_OPEN-AI-URL'] = 'https://o.codeutsman.com/v1'
+    os.environ['INPUT_OPENAI-URL'] = 'https://o.codeutsman.com/v1'
     os.environ['API_KEY'] = 'ollama'
 
 def read_test_diff():
