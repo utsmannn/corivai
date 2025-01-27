@@ -45,65 +45,10 @@ def get_review_comments():
 
         in_replies_to = [com for com in all_comment if com.in_reply_to_id == reply_to_id]
 
-        # comments = [pr.get_comment(com_id) for com_id in in_replies_to]
-
-        print(f"cuaks ----> {parent.user.login}: {parent.body} | {parent.in_reply_to_id}")
+        print(f"cuaks system --> {parent.diff_hunk}")
+        print(f"cuaks assistant ----> {parent.user.login}: {parent.body} | {parent.in_reply_to_id}")
         for com in in_replies_to:
-            print(f"cuaks ----> {com.user.login}: {com.body} | {com.in_reply_to_id}")
-
-
-
-    # for rc in pr.get_review_comments():
-    #     print(f"cuaks acuu --> {rc.pull_request_review_id} | thread: {thread_id} ||| body: {rc.body} | id: {rc.id} | {rc.in_reply_to_id}")
-    #
-    # # for com in pr.get_review_comments()
-    #
-    # for com in pr.get_comments():
-    #     print(f"cuaksssss ---> | {com.pull_request_review_id} ---> {thread_id}")
-
-    # if thread_id:
-    #     # thread = pr.get_review_comment(int(thread_id))
-    #     comments = pr.get_review_comments()
-    #     for com in comments:
-    #         if com.pull_request_review_id == int(thread_id):
-    #             print(f"asuu ada nih | {com.user.login}: {com.body}")
-
-    # if thread_id:
-    #     comments = pr.get_review_comment(int(thread_id))
-    #     logger.info(f"cuaks ---> | {comments.pull_request_review_id} | {thread_id}")
-
-    # headers = {
-    #     'Authorization': f'token {token}',
-    #     'Accept': 'application/vnd.github.v3+json'
-    # }
-    #
-    # # Get all review comments for the PR
-    # api_url = f'https://api.github.com/repos/{repo}/pulls/{pr_number}/comments'
-    # response = requests.get(api_url, headers=headers)
-    #
-    # if response.status_code == 200:
-    #     all_comments = response.json()
-    #     # Filter comments by thread ID to get the conversation
-    #     thread_comments = [
-    #         comment for comment in all_comments
-    #         if comment['pull_request_review_thread_id'] == int(thread_id)
-    #     ]
-    #
-    #     # Sort comments by creation time
-    #     thread_comments.sort(key=lambda x: x['created_at'])
-    #
-    #     # Extract the conversation
-    #     conversation = []
-    #     for comment in thread_comments:
-    #         conversation.append({
-    #             'user': comment['user']['login'],
-    #             'body': comment['body'],
-    #             'created_at': comment['created_at']
-    #         })
-    #
-    #     return conversation
-    #
-    # return None
+            print(f"cuaks user ----> {com.user.login}: {com.body} | {com.in_reply_to_id}")
 
 
 def main():
