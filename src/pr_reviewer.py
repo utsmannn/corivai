@@ -1,9 +1,8 @@
 import os
 import logging
 import re
-import html
 import json
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import requests
 from github import Github
@@ -54,177 +53,105 @@ class PRReviewer:
         response.raise_for_status()
         return response.text
 
-    def parse_diff(self, diff_content: str) -> Dict:
+    def create_structured_diff(self, diff_content: str) -> Dict:
         """
-        Parse git diff content into structured JSON format.
-        Returns a dictionary with 'diff' key containing list of file changes.
+        Create a structured diff for AI review.
+        Returns a dictionary in the format:
+        {
+            "diff": [
+                {
+                    "file_path": str,
+                    "changes": str,
+                    "line": int,
+                    "comment": ""
+                }
+            ]
+        }
         """
-        diff_data = {"diff": []}
+        structured_diff = {"diff": []}
         current_file = None
-        current_changes = []
+        current_line = 0
 
         lines = diff_content.split('\n')
         i = 0
+
         while i < len(lines):
             line = lines[i]
 
             if line.startswith('diff --git'):
-                # Add previous file's changes if they exist
-                if current_file and current_changes:
-                    diff_data["diff"].append({
-                        "file_path": current_file,
-                        "changes": '\n'.join(current_changes)
-                    })
-                    current_changes = []
-
-                # Get new file path
                 match = re.match(r'diff --git a/(.+?) b/(.+)', line)
                 if match:
                     current_file = match.group(2)
                 i += 1
                 continue
 
-            # Skip standard git diff headers
             if any(line.startswith(prefix) for prefix in ['index ', '--- ', '+++ ']):
                 i += 1
                 continue
 
-            # Capture hunk headers and changes
-            if line.startswith('@@') or line.startswith(' ') or line.startswith('+') or line.startswith('-'):
-                current_changes.append(line)
-
-            i += 1
-
-        # Add the last file's changes
-        if current_file and current_changes:
-            diff_data["diff"].append({
-                "file_path": current_file,
-                "changes": '\n'.join(current_changes)
-            })
-
-        return diff_data
-
-    def get_line_mapping(self, changes: str) -> Dict[str, List[int]]:
-        """
-        Create a mapping of lines to their positions in the file.
-        """
-        line_map = {}
-        current_line = 0
-        in_hunk = False
-
-        for line in changes.split('\n'):
             if line.startswith('@@'):
                 match = re.match(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@', line)
                 if match:
                     current_line = int(match.group(1)) - 1
-                    in_hunk = True
+                i += 1
                 continue
 
-            if not in_hunk:
-                continue
-
-            if line.startswith(' ') or line.startswith('+'):
+            if line.startswith('+') and not line.startswith('+++'):
+                code_content = line[1:]
+                if code_content.strip():
+                    current_line += 1
+                    structured_diff["diff"].append({
+                        "file_path": current_file,
+                        "changes": code_content.rstrip(),  # Remove trailing whitespace
+                        "line": current_line,
+                        "comment": ""
+                    })
+            elif line.startswith(' '):
                 current_line += 1
 
-            if line.startswith('+'):
-                content = line[1:].strip()
-                if content:
-                    if content not in line_map:
-                        line_map[content] = []
-                    line_map[content].append(current_line)
+            i += 1
 
-        return line_map
+        return structured_diff
 
-    def find_line_position(self, target_line: str, file_changes: str) -> Optional[int]:
+    def apply_review_comments(self, review_response: ReviewResponse, structured_diff: Dict) -> List[dict]:
         """
-        Find the position of a target line in the file changes.
+        Convert review comments to GitHub comment format.
         """
-        line_map = self.get_line_mapping(file_changes)
-        target_line = target_line.strip()
-
-        return line_map.get(target_line, [None])[0]
-
-    def process_review_comments(self, review_response: ReviewResponse, diff_data: Dict) -> List[dict]:
-        """
-        Process review comments using the JSON-structured diff data.
-        """
-        processed_comments = []
+        github_comments = []
 
         for comment in review_response.comments:
-            target_line = comment.line_string.strip()
-            found_match = False
-
-            for file_diff in diff_data['diff']:
-                position = self.find_line_position(target_line, file_diff['changes'])
-
-                if position is not None:
-                    processed_comments.append({
-                        'path': file_diff['file_path'],
-                        'position': position,
-                        'body': f"**Finding**: {comment.comment}"
+            # Find matching diff entry
+            for diff_entry in structured_diff["diff"]:
+                if (diff_entry["file_path"] == comment.file_path and
+                        diff_entry["changes"].strip() == comment.line_string.strip()):
+                    github_comments.append({
+                        "path": comment.file_path,
+                        "position": diff_entry["line"],
+                        "body": f"**Finding**: {comment.comment}"
                     })
-                    found_match = True
+                    break
 
-            if not found_match:
-                logger.warning(f"No match found for line: {target_line}")
-
-        return processed_comments
-
-    @retry(max_retries=3, delay=2)
-    def generate_review(self, diff: str) -> ReviewResponse:
-        """Generate an AI review for the given diff content."""
-        safe_diff = html.escape(diff[:self.max_diff_size])
-        prompt = self._build_review_prompt(safe_diff)
-
-        try:
-            return self.generator.generate(prompt)
-        except Exception as e:
-            raise ReviewError(f"Failed to generate review: {str(e)}")
-
-    def _build_review_prompt(self, diff: str) -> str:
-        """Build the prompt for the AI review."""
-        return f"""**Code Review Task**
-Analyze this code diff and generate structured feedback. For each comment:
-1. Include the EXACT line of code you're commenting on (only the code, without +/- prefixes)
-2. Provide your review comment
-
-Important: Copy the exact line from the diff, maintaining all whitespace and formatting.
-
-Diff to review:
-{diff}
-
-**Requirements:**
-{self.custom_instructions}"""
-
-    def _get_existing_comments(self, pr) -> set:
-        """Get existing review comments to avoid duplicates."""
-        return {(c.path, c.position) for c in pr.get_review_comments()}
+        return github_comments
 
     def post_comments(self, comments: List[dict], pr, current_head_sha: str) -> None:
-        """Post processed comments to the PR."""
-        existing_comments = self._get_existing_comments(pr)
+        """Post the comments to GitHub PR."""
+        if not comments:
+            logger.info("No comments to post")
+            return
 
-        # Filter out existing comments
-        new_comments = [
-            comment for comment in comments
-            if (comment['path'], comment['position']) not in existing_comments
-        ]
-
-        if new_comments:
-            try:
-                pr.create_review(event="COMMENT", comments=new_comments)
-                pr.create_issue_comment(
-                    f"@corivai-review Last Processed SHA: {current_head_sha}")
-                logger.info(f"Posted {len(new_comments)} new review comments")
-            except Exception as e:
-                logger.error(f"Failed to post review comments: {str(e)}")
-                raise
-        else:
-            logger.info("No new comments to post")
+        try:
+            pr.create_review(event="COMMENT", comments=comments)
+            pr.create_issue_comment(
+                f"@corivai-review Last Processed SHA: {current_head_sha}")
+            logger.info(f"Posted {len(comments)} review comments")
+        except Exception as e:
+            logger.error(f"Failed to post review comments: {str(e)}")
+            raise
 
     def process_pr(self) -> None:
         """Main method to process a pull request."""
         try:
+            # Get PR information
             pr_number = self.get_pr_number()
             pr = self.repo.get_pull(pr_number)
             current_head_sha = pr.head.sha
@@ -235,27 +162,27 @@ Diff to review:
                     logger.info("No new commits to process")
                     return
 
-            # Get and validate diff content
+            # Get diff content
             diff_content = self.get_pr_diff(pr)
             if len(diff_content) > self.max_diff_size:
                 logger.warning(f"Diff size ({len(diff_content)} bytes) exceeds limit")
                 return
 
-            # Parse diff into JSON structure
-            diff_data = self.parse_diff(diff_content)
+            # Create structured diff
+            structured_diff = self.create_structured_diff(diff_content)
 
-            # Debug logging for diff structure
-            logger.debug("Parsed diff structure:")
-            logger.debug(json.dumps(diff_data, indent=2))
+            # Log the structured diff for debugging
+            logger.debug("Structured diff created:")
+            logger.debug(json.dumps(structured_diff, indent=2))
 
-            # Generate review
-            review_response = self.generate_review(str(diff_data))
+            # Generate review using the AI generator
+            review_response = self.generator.generate(json.dumps(structured_diff))
 
-            # Process and post comments
-            processed_comments = self.process_review_comments(review_response, diff_data)
+            # Convert review comments to GitHub format
+            github_comments = self.apply_review_comments(review_response, structured_diff)
 
             # Post comments
-            self.post_comments(processed_comments, pr, current_head_sha)
+            self.post_comments(github_comments, pr, current_head_sha)
 
             logger.info("Review completed successfully")
 
