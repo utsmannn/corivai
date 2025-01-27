@@ -32,7 +32,7 @@ def generate_ai_response(messages):
             top_p=0.95
         )
 
-        return response
+        return response.choices[0].message.content
     except Exception as e:
         raise Exception(f"Error processing AI response: {str(e)}")
 
@@ -84,6 +84,12 @@ def get_review_comments():
             })
 
         response = generate_ai_response(messages)
+
+        pr.create_review_comment_reply(
+            comment_id=reply_to_id,
+            body=response
+        )
+
         print("cuaks---")
         print(response)
         print("cuaks---")
