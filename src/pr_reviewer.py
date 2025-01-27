@@ -23,7 +23,7 @@ class PRReviewer:
     def __init__(self):
         self.github_token = os.getenv('GITHUB_TOKEN')
         self.repo_name = os.getenv('GITHUB_REPOSITORY')
-        self.model_name = os.getenv('INPUT_MODEL_NAME', 'gemini-1.5-pro-latest')
+        self.model_name = os.getenv('INPUT_MODEL-NAME', '')
         self.max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '500000'))
         self.summary_text = f'## 📝 Code Review by Coriva.\nModel: ({self.model_name})'
         self.custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')

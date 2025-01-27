@@ -10,11 +10,11 @@ inputs:
   model-name:
     description: 'Gemini model name'
     required: true
-    default: 'gemini-1.5-pro-latest'
+    default: ''
   open-api-url:
     description: 'Gemini model name'
     required: true
-    default: 'gemini-1.5-pro-latest'
+    default: ''
   custom-instructions:
     description: 'Additional review instructions (Markdown supported)'
     required: false
@@ -42,7 +42,7 @@ runs:
       env:
         API_KEY: ${{ inputs.reviewer-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        INPUT_OPEN-API-URL: ${{ inputs.open-api-url }}
+        INPUT_OPEN-AI-URL: ${{ inputs.open-api-url }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
         INPUT_MAX_DIFF_SIZE: ${{ inputs.max-diff-size }}
