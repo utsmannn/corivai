@@ -2,7 +2,9 @@ name: Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [ opened, synchronize, reopened ]
+  pull_request_review_comment:
+    types: [ created ]
 
 jobs:
   review:
@@ -15,11 +17,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Debug directory contents
-        run: |
-          pwd
-          ls -la
-          ls -la src/
+      - name: Run Code Review
+        uses: ./
+        with:
+          reviewer-api-key: ${{ secrets.REVIEWER_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          open-ai-url: https://o.codeutsman.com/v1
+          max-diff-size: 500000
+          model-name: qwen2.5-coder
+
+  comment-processor:
+    if: github.event_name == 'pull_request_review_comment'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Run Code Review
         uses: ./
@@ -29,6 +44,3 @@ jobs:
           open-ai-url: https://o.codeutsman.com/v1
           max-diff-size: 500000
           model-name: qwen2.5-coder
-          custom-instructions: |
-            Using bahasa indonesia,
-            Extreme review.
