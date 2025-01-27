@@ -6,7 +6,7 @@ from github import Github
 
 from src import ReviewError
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 def get_pr_number() -> int:
@@ -31,17 +31,17 @@ def get_review_comments():
     pr_number = get_pr_number()
     pr = repo.get_pull(pr_number)
 
-    logger.info(f"cuaks comment id -> {commend_id}")
-    logger.info(f"cuaks thread id -> {thread_id}")
+    print(f"cuaks comment id -> {commend_id}")
+    print(f"cuaks thread id -> {thread_id}")
 
 
     for rc in pr.get_review_comments():
-        logger.info(f"cuaks acuu --> {rc.pull_request_review_id}")
+        print(f"cuaks acuu --> {rc.pull_request_review_id} | thread: {thread_id}")
 
     # for com in pr.get_review_comments()
 
     for com in pr.get_comments():
-        logger.info(f"cuaksssss ---> | {com.pull_request_review_id} ---> {thread_id}")
+        print(f"cuaksssss ---> | {com.pull_request_review_id} ---> {thread_id}")
 
     # if thread_id:
     #     comments = pr.get_review_comment(int(thread_id))
