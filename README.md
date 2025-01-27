@@ -89,7 +89,7 @@ duh leah apaan sih nihhhhh
     reviewer-api-key: ${{ secrets.GEMINI_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
     model-name: 'gemini-pro'
-    open-ai-url: 'https://generativelanguage.googleapis.com/v1'
+    open-ai-url: 'https://generativelanguage.googleapis.com/v1beta/openai/'
 ```
 
 ### Ollama (Self-hosted or Cloud)

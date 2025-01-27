@@ -21,6 +21,6 @@ jobs:
         with:
           reviewer-api-key: ${{ secrets.REVIEWER_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          open-ai-url: https://o.codeutsman.com/v1
+          open-ai-url: https://generativelanguage.googleapis.com/v1beta/openai/
           max-diff-size: 500000
-          model-name: qwen2.5-coder
+          model-name: gemini-1.5-flash
