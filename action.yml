@@ -11,8 +11,8 @@ inputs:
     description: 'Gemini model name'
     required: true
     default: ''
-  open-api-url:
-    description: 'Gemini model name'
+  open-ai-url:
+    description: 'End point for OpenAI library compatibility'
     required: true
     default: ''
   custom-instructions:
@@ -42,7 +42,7 @@ runs:
       env:
         API_KEY: ${{ inputs.reviewer-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        INPUT_OPEN-AI-URL: ${{ inputs.open-api-url }}
+        INPUT_OPEN-AI-URL: ${{ inputs.open-ai-url }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
         INPUT_MAX_DIFF_SIZE: ${{ inputs.max-diff-size }}
