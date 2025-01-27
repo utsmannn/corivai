@@ -10,9 +10,7 @@ from src.models import ReviewResponse, ReviewComment
 class ResponseReviewGenerator(ABC):
     @abstractmethod
     def generate(self, diff: str) -> ReviewResponse:
-        """Generate review comments from diff content"""
         pass
-
 
 class DiffItem(BaseModel):
     file_path: str
@@ -20,10 +18,8 @@ class DiffItem(BaseModel):
     line: int
     comment: str
 
-
 class DiffResponse(BaseModel):
     diff: list[DiffItem]
-
 
 class AIReviewGenerator(ResponseReviewGenerator):
     def __init__(self, model_name: str):
@@ -33,21 +29,6 @@ class AIReviewGenerator(ResponseReviewGenerator):
         self.model_name = model_name
 
     def generate(self, structured_diff: str) -> ReviewResponse:
-        """
-        Generate review comments from structured diff content.
-        The input should be a JSON string in the format:
-        {
-            "diff": [
-                {
-                    "file_path": str,
-                    "changes": str,
-                    "line": int,
-                    "comment": ""
-                },
-                ...
-            ]
-        }
-        """
         response = self.client.beta.chat.completions.parse(
             model=self.model_name,
             response_format=DiffResponse,
@@ -71,18 +52,16 @@ class AIReviewGenerator(ResponseReviewGenerator):
         )
 
         try:
-            # Parse the response and convert to ReviewResponse format
             diff_response = json.loads(response.choices[0].message.content)
 
-            # Create ReviewComment objects for non-empty comments
             comments = [
                 ReviewComment(
                     comment=item["comment"],
                     file_path=item["file_path"],
-                    line_string=item["changes"]  # Use the actual code changes as line_string
+                    line_string=item["changes"]
                 )
                 for item in diff_response["diff"]
-                if item["comment"]  # Only include items with non-empty comments
+                if item["comment"]
             ]
 
             return ReviewResponse(comments=comments)
@@ -93,9 +72,6 @@ class AIReviewGenerator(ResponseReviewGenerator):
             raise Exception(f"Error processing AI response: {str(e)}")
 
     def _validate_response(self, response_data: Dict) -> bool:
-        """
-        Validate that the response maintains the required structure.
-        """
         if not isinstance(response_data, dict) or "diff" not in response_data:
             return False
 

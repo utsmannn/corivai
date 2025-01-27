@@ -61,31 +61,32 @@ def get_review_comments():
         reply_to_id = comment.in_reply_to_id
         parent = pr.get_comment(reply_to_id)
 
-        in_replies_to = [com for com in all_comment if com.in_reply_to_id == reply_to_id]
+        if parent.diff_hunk:
+            in_replies_to = [com for com in all_comment if com.in_reply_to_id == reply_to_id]
 
-        messages = [
-            {
-                "role": "system",
-                "content": json.dumps(parent.diff_hunk)
-            },
-            {
-                "role": "assistant",
-                "content": parent.body
-            }
-        ]
+            messages = [
+                {
+                    "role": "system",
+                    "content": json.dumps(parent.diff_hunk)
+                },
+                {
+                    "role": "assistant",
+                    "content": parent.body
+                }
+            ]
 
-        for reply in in_replies_to:
-            messages.append({
-                "role": "user",
-                "content": reply.body
-            })
+            for reply in in_replies_to:
+                messages.append({
+                    "role": "user",
+                    "content": reply.body
+                })
 
-        response = generate_ai_response(messages)
+            response = generate_ai_response(messages)
 
-        pr.create_review_comment_reply(
-            comment_id=reply_to_id,
-            body=response
-        )
+            pr.create_review_comment_reply(
+                comment_id=reply_to_id,
+                body=response
+            )
 
 
 def main():
