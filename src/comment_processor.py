@@ -43,22 +43,22 @@ def get_review_comments():
         reply_to_id = comment.in_reply_to_id
         # parent = pr.get_comment(reply_to_id)
 
-        in_replies_to = [com.in_reply_to_id for com in all_comment if com.in_reply_to_id == reply_to_id]
+        in_replies_to = [com for com in all_comment if com.in_reply_to_id == reply_to_id]
 
-        comments = [pr.get_comment(com_id) for com_id in in_replies_to]
+        # comments = [pr.get_comment(com_id) for com_id in in_replies_to]
 
-        for com in comments:
-            print(f"cuaks  ----> {com.user.login}: {com.body} | {com.in_reply_to_id}")
+        for com in in_replies_to:
+            print(f"cuaks ----> {com.user.login}: {com.body} | {com.in_reply_to_id}")
 
 
 
-    for rc in pr.get_review_comments():
-        print(f"cuaks acuu --> {rc.pull_request_review_id} | thread: {thread_id} ||| body: {rc.body} | id: {rc.id} | {rc.in_reply_to_id}")
-
-    # for com in pr.get_review_comments()
-
-    for com in pr.get_comments():
-        print(f"cuaksssss ---> | {com.pull_request_review_id} ---> {thread_id}")
+    # for rc in pr.get_review_comments():
+    #     print(f"cuaks acuu --> {rc.pull_request_review_id} | thread: {thread_id} ||| body: {rc.body} | id: {rc.id} | {rc.in_reply_to_id}")
+    #
+    # # for com in pr.get_review_comments()
+    #
+    # for com in pr.get_comments():
+    #     print(f"cuaksssss ---> | {com.pull_request_review_id} ---> {thread_id}")
 
     # if thread_id:
     #     # thread = pr.get_review_comment(int(thread_id))
