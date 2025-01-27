@@ -1,5 +1,9 @@
 name: 'Corivai - Code Review AI Assistant'
 description: 'AI-powered code review with custom instructions'
+author: Muhammad Utsman
+branding:
+  icon: "activity"
+  color: "red"
 inputs:
   reviewer-api-key:
     description: 'Provider API Key'
@@ -12,7 +16,7 @@ inputs:
     required: true
     default: ''
   openai-url:
-    description: 'End point for OpenAI library compatibility'
+    description: 'Endpoint for OpenAI library compatibility'
     required: false
     default: 'https://api.openai.com/v1'
   custom-instructions:
