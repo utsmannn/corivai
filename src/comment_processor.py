@@ -36,7 +36,7 @@ def get_review_comments():
 
 
     for rc in pr.get_review_comments():
-        print(f"cuaks acuu --> {rc.pull_request_review_id} | thread: {thread_id}")
+        print(f"cuaks acuu --> {rc.pull_request_review_id} | thread: {thread_id} ||| body: {rc.body} | id: {rc.id} | {rc.in_reply_to_id}")
 
     # for com in pr.get_review_comments()
 
