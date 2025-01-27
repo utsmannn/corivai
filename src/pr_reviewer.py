@@ -182,16 +182,14 @@ class PRReviewer:
         Returns True if the change needs a new comment, False otherwise.
         """
         try:
-            existing_reviews = pr.get_reviews()
+            existing_reviews = pr.get_review_comments()
             normalized_content = self._normalize_code(line_content)
 
-            for review in existing_reviews:
-                comments = review.get_review_comments()
-                for comment in comments:
-                    if (comment.path == file_path and
-                            comment.position == position and
-                            self._normalize_code(comment.diff_hunk) == normalized_content):
-                        return False
+            for comment in existing_reviews:
+                if (comment.path == file_path and
+                        comment.position == position and
+                        self._normalize_code(comment.diff_hunk) == normalized_content):
+                    return False
             return True
         except Exception as e:
             logger.error(f"Error validating code changes: {str(e)}")
