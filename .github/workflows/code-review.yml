@@ -14,9 +14,6 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Run Code Review
         uses: ./
         with:
@@ -33,10 +30,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run Code Review
+      - name: Run Comment Processor
         uses: ./
         with:
           reviewer-api-key: ${{ secrets.REVIEWER_API_KEY }}

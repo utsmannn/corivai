@@ -41,12 +41,6 @@ runs:
         pip install requests
       shell: bash
 
-    - name: Configure Git
-      run: |
-        git config --local user.email "utsmannn@outlook.com"
-        git config --local user.name "corivai-review"
-      shell: bash
-
     - name: Execute review
       if: github.event_name == 'pull_request'
       env:
