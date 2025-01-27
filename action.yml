@@ -36,6 +36,11 @@ runs:
       with:
         python-version: '3.11'
 
+    - name: Download requirements.txt
+      run: |
+        curl -o requirements.txt https://raw.githubusercontent.com/utsmannn/corivai/main/requirements.txt
+      shell: bash
+
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
