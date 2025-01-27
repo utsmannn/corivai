@@ -162,11 +162,8 @@ class PRReviewer:
             chunk_json = json.dumps(chunk, indent=2)
             review_response = self.generator.generate(chunk_json)
 
-            github_comments = self.apply_review_comments(review_response, chunk)
-
-            logger.info("\n asuuuu cuaks")
-            logger.info(github_comments)
-            logger.info("\n asuuuu cuaks")
+            # Pass PR object to apply_review_comments
+            github_comments = self.apply_review_comments(review_response, chunk, pr)
 
             if github_comments:
                 pr.create_review(
@@ -179,17 +176,49 @@ class PRReviewer:
             logger.error(f"Error processing chunk: {str(e)}")
             raise
 
-    def apply_review_comments(self, review_response: ReviewResponse, diff_chunk: Dict) -> List[dict]:
+    def validate_code_changes(self, pr, file_path: str, line_content: str, position: int) -> bool:
+        """
+        Validate if a specific code change already has a comment.
+        Returns True if the change needs a new comment, False otherwise.
+        """
+        try:
+            existing_reviews = pr.get_reviews()
+            normalized_content = self._normalize_code(line_content)
+
+            for review in existing_reviews:
+                comments = review.get_comments()
+                for comment in comments:
+                    if (comment.path == file_path and
+                            comment.position == position and
+                            self._normalize_code(comment.diff_hunk) == normalized_content):
+                        return False
+            return True
+        except Exception as e:
+            logger.error(f"Error validating code changes: {str(e)}")
+            return True
+
+    def apply_review_comments(self, review_response: ReviewResponse, diff_chunk: Dict, pr) -> List[dict]:
+        """Enhanced apply_review_comments with change validation."""
         github_comments = []
 
         for comment in review_response.comments:
             for diff_entry in diff_chunk["diff"]:
                 if (diff_entry["file_path"] == comment.file_path and
                         self._normalize_code(diff_entry["changes"]) == self._normalize_code(comment.line_string)):
-                    # Validate position before creating comment
+
+                    # Validate position
                     if diff_entry["line"] <= 0:
                         logger.warning(
                             f"Skipping comment for {comment.file_path}: Invalid position {diff_entry['line']}")
+                        continue
+
+                    # Check if this change already has a comment
+                    if not self.validate_code_changes(pr,
+                                                      diff_entry["file_path"],
+                                                      diff_entry["changes"],
+                                                      diff_entry["line"]):
+                        logger.info(
+                            f"Skipping duplicate comment for {diff_entry['file_path']} at position {diff_entry['line']}")
                         continue
 
                     github_comments.append({
@@ -210,12 +239,6 @@ class PRReviewer:
             pr = self.repo.get_pull(pr_number)
             current_head_sha = pr.head.sha
 
-            # Check if already processed
-            for comment in pr.get_issue_comments():
-                if f"@corivai-review Last Processed SHA: {current_head_sha}" in comment.body:
-                    logger.info("No new commits to process")
-                    return
-
             # Get and validate diff content
             diff_content = self.get_pr_diff(pr)
             if len(diff_content) > self.max_diff_size:
@@ -228,21 +251,20 @@ class PRReviewer:
 
             logger.info(f"Processing {len(structured_diff['diff'])} changes in {total_chunks} chunks")
 
-            # Process each chunk and post comments immediately
+            # Process each chunk
             for i, chunk in enumerate(self.chunk_diff_data(structured_diff), 1):
                 logger.info(f"Processing chunk {i}/{total_chunks}")
-
-                # Process the chunk and post its comments
                 self.process_chunk(chunk, pr, current_head_sha)
 
-                # Add delay before next chunk unless it's the last one
                 if i < total_chunks:
                     logger.debug(f"Waiting {self.chunk_delay} seconds before next chunk")
                     time.sleep(self.chunk_delay)
 
-            # Post completion comment
+            # Add completion comment
             pr.create_issue_comment(
-                f"@corivai-review Last Processed SHA: {current_head_sha}")
+                f"@corivai-review Last Processed SHA: {current_head_sha}\n"
+                f"Review completed at: {time.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            )
             logger.info("Review completed successfully")
 
         except Exception as e:
