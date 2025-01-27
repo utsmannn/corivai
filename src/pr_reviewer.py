@@ -146,7 +146,7 @@ class PRReviewer:
                         changes = block['changes']
                         line = diff_position + (block['start_line'] - i)
 
-                        if file_path not in existing_paths and changes not in existing_changes and line not in existing_line:
+                        if file_path not in existing_paths and self._normalize_code(changes) not in existing_changes and line not in existing_line:
                             structured_diff["diff"].append({
                                 "file_path": file_path,
                                 "changes": changes,
