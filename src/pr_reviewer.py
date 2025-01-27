@@ -197,7 +197,7 @@ Analyze this code diff and generate structured feedback:
         print(f"execute.... -> {len(comment_payload)} | exiting -> {len(existing_comments)}")
 
 
-        if len(comment_payload) > 0:
+        if comment_payload:
 #             summary_prompt = self._build_summary_prompt(comment_payload)
 #             summary = self.summary_generator.generate(summary_prompt)
 #
