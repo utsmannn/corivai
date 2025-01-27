@@ -1,7 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from src.models import ReviewResponse, ReviewComment
-from openai import OpenAI
+from openai import OpenAI, BaseModel
 import json
 from typing import List, Dict, Any
 
@@ -11,6 +11,14 @@ class ResponseReviewGenerator(ABC):
     def generate(self, diff: str) -> ReviewResponse:
         """Generate review comments from diff content"""
         pass
+
+class Comment(BaseModel):
+  comment: str
+  file_path: str
+  line_string: str
+
+class Response(BaseModel):
+  response: list[Comment]
 
 
 class AIReviewGenerator(ResponseReviewGenerator):
@@ -42,13 +50,13 @@ class AIReviewGenerator(ResponseReviewGenerator):
         }
 
     def generate(self, diff: str) -> ReviewResponse:
-        response = self.client.chat.completions.create(
+        response = self.client.beta.chat.completions.parse(
             model=self.model_name,
-            response_format={"type": "json_object"},
+            response_format=Response,
             messages=[
                 {
                     "role": "system",
-                    "content": f"You are a code review assistant. Analyze the provided diff and generate review comments. Respond with JSON matching this schema: {json.dumps(self.response_format)}"
+                    "content": f"You are a code review assistant. Analyze the provided diff and generate review comments"
                 },
                 {
                     "role": "user",
@@ -56,7 +64,7 @@ class AIReviewGenerator(ResponseReviewGenerator):
                 }
             ],
             temperature=1.0,
-            top_p=0.95,
+            top_p=0.95
         )
 
         # Extract and parse the JSON response
