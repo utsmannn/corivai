@@ -119,7 +119,7 @@ Models: https://ai.google.dev/gemini-api/docs/models/gemini
   with:
     reviewer-api-key: ${{ secrets.GEMINI_API_KEY }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
-    model-name: 'gemini-pro'
+    model-name: 'gemini-1.5-flash'
     openai-url: 'https://generativelanguage.googleapis.com/v1beta/openai/'
 ```
 
