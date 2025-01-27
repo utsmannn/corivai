@@ -186,7 +186,7 @@ class PRReviewer:
             normalized_content = self._normalize_code(line_content)
 
             for review in existing_reviews:
-                comments = review.get_comments()
+                comments = review.get_review_comments()
                 for comment in comments:
                     if (comment.path == file_path and
                             comment.position == position and
