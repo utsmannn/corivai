@@ -15,13 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Debug directory contents
+        run: |
+          pwd
+          ls -la
+          ls -la src/
+
       - name: Run Code Review
         uses: ./
         with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          reviewer-api-key: ${{ secrets.REVIEWER_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          open-ai-url: https://o.codeutsman.com/v1
           max-diff-size: 500000
-          model-name: gemini-1.5-flash
+          model-name: qwen2.5-coder
           custom-instructions: |
             Using bahasa indonesia,
             Extreme review.

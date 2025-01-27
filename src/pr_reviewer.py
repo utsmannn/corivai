@@ -1,19 +1,18 @@
 import os
-import requests
-import html
-import base64
 import logging
 import re
-import google.generativeai as genai
-from typing import Dict, List, Optional
+import json
+import time
+from typing import Dict, List, Optional, Tuple, Iterator
 
+import requests
 from github import Github
+from github.PullRequest import PullRequest
 
-from src import GeminiSummaryGenerator
-from src.decorators import retry
 from src.exceptions import ReviewError
-from src.models import ReviewResponse
-from src.generator_review_interface import ResponseReviewGenerator, GeminiReviewGenerator
+from src.models import ReviewResponse, ReviewComment
+from src.generator_review_interface import AIReviewGenerator
+from src.decorators import retry
 
 logger = logging.getLogger(__name__)
 
@@ -22,24 +21,18 @@ class PRReviewer:
     def __init__(self):
         self.github_token = os.getenv('GITHUB_TOKEN')
         self.repo_name = os.getenv('GITHUB_REPOSITORY')
-        self.model_name = os.getenv('INPUT_MODEL_NAME', 'gemini-1.5-pro-latest')
+        self.model_name = os.getenv('INPUT_MODEL-NAME', '')
         self.max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '500000'))
-        self.summary_text = f'## 📝 Code Review by Coriva.\nModel: ({self.model_name})'
         self.custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
+        self.chunk_size = 5
+        self.chunk_delay = 5  # seconds
 
         if not all([self.github_token, self.repo_name]):
             raise ReviewError("Missing required environment variables")
 
         self.github = Github(self.github_token)
         self.repo = self.github.get_repo(self.repo_name)
-
-        genai_api_key = os.getenv('GEMINI_API_KEY')
-        if not genai_api_key:
-            raise ReviewError("Missing Gemini API key")
-
-        genai.configure(api_key=genai_api_key)
-        self.generator = GeminiReviewGenerator(self.model_name)
-        self.summary_generator = GeminiSummaryGenerator(self.model_name)
+        self.generator = AIReviewGenerator(self.model_name)
 
     def get_pr_number(self) -> int:
         pr_ref = os.getenv('GITHUB_REF')
@@ -57,142 +50,197 @@ class PRReviewer:
             'Accept': 'application/vnd.github.v3.diff'
         }
         url = f'https://api.github.com/repos/{self.repo_name}/pulls/{pr.number}'
-
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.text
 
-    def parse_diff(self, diff_content: str) -> Dict[str, List[dict]]:
-        file_hunks = {}
-        current_file = None
+    def extract_code_block(self, lines: List[str], start_idx: int, current_file: str) -> Tuple[str, int, List[dict]]:
+        code_lines = []
+        changed_blocks = []
+        i = start_idx
+        block_start_line = None
+        current_block = []
 
-        for line in diff_content.split('\n'):
+        while i < len(lines):
+            line = lines[i]
+
+            if line.startswith('diff --git') or line.startswith('@@'):
+                break
+
+            if line.startswith('+'):
+                content = line[1:]
+                if block_start_line is None:
+                    block_start_line = i
+                current_block.append(content)
+            elif line.startswith(' '):
+                if current_block:
+                    changed_blocks.append({
+                        'file_path': current_file,
+                        'changes': '\n'.join(current_block),
+                        'start_line': block_start_line
+                    })
+                    current_block = []
+                    block_start_line = None
+            else:
+                if current_block:
+                    changed_blocks.append({
+                        'file_path': current_file,
+                        'changes': '\n'.join(current_block),
+                        'start_line': block_start_line
+                    })
+                    current_block = []
+                    block_start_line = None
+
+            code_lines.append(line)
+            i += 1
+
+        if current_block:
+            changed_blocks.append({
+                'file_path': current_file,
+                'changes': '\n'.join(current_block),
+                'start_line': block_start_line
+            })
+
+        return '\n'.join(code_lines), i, changed_blocks
+
+    def create_structured_diff(self, pr: PullRequest, diff_content: str) -> Dict:
+        structured_diff = {"diff": []}
+        current_file = None
+        diff_position = 0  # Track position within the diff
+
+        comments = pr.get_review_comments()
+
+        existing_paths = [comment.path for comment in comments]
+        existing_changes = [self._normalize_code(comment.diff_hunk) for comment in comments]
+        existing_line = [comment.position for comment in comments]
+
+        lines = diff_content.split('\n')
+        i = 0
+
+        while i < len(lines):
+            line = lines[i]
+
             if line.startswith('diff --git'):
                 match = re.match(r'diff --git a/(.+?) b/(.+)', line)
                 if match:
                     current_file = match.group(2)
-                    file_hunks[current_file] = []
-            elif line.startswith('@@'):
-                match = re.match(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', line)
-                if match:
-                    file_hunks[current_file].append({
-                        'start_line': int(match.group(1)),
-                        'lines': []
-                    })
-            elif current_file and file_hunks[current_file]:
-                if line.startswith('+') and not line.startswith('+++'):
-                    file_hunks[current_file][-1]['lines'].append(line[1:].rstrip('\n'))
+                    diff_position = 0  # Reset position for new file
+                i += 1
+                continue
 
-        return file_hunks
+            if any(line.startswith(prefix) for prefix in ['index ', '--- ', '+++ ']):
+                i += 1
+                continue
 
-    def get_file_content(self, file_path: str, ref: str) -> Optional[List[str]]:
+            if line.startswith('@@'):
+                diff_position += 1  # Count the hunk header
+                i += 1
+                continue
+
+            if line.startswith('+') or line.startswith(' '):
+                _, new_idx, changed_blocks = self.extract_code_block(lines, i, current_file)
+
+                for block in changed_blocks:
+                    if block['changes'].strip():
+                        file_path = block['file_path']
+                        changes = block['changes']
+                        line = diff_position + (block['start_line'] - i)
+
+                        if file_path not in existing_paths and self._normalize_code(changes) not in existing_changes and line not in existing_line:
+                            structured_diff["diff"].append({
+                                "file_path": file_path,
+                                "changes": changes,
+                                "line": line,
+                                "comment": ""
+                            })
+
+                diff_position += new_idx - i
+                i = new_idx
+            else:
+                diff_position += 1
+                i += 1
+
+        return structured_diff
+
+    def chunk_diff_data(self, diff_data: Dict[str, List[Dict]]) -> Iterator[Dict[str, List[Dict]]]:
+        diff_items = diff_data["diff"]
+        for i in range(0, len(diff_items), self.chunk_size):
+            chunk = diff_items[i:i + self.chunk_size]
+            yield {"diff": chunk}
+
+    def process_chunk(self, chunk: Dict, pr, current_head_sha: str) -> None:
         try:
-            response = requests.get(
-                f"https://api.github.com/repos/{self.repo_name}/contents/{file_path}?ref={ref}",
-                headers={'Authorization': f'Bearer {self.github_token}'}
-            )
-            response.raise_for_status()
-            content = response.json()['content']
-            return base64.b64decode(content).decode('utf-8').splitlines()
+            chunk_json = json.dumps(chunk, indent=2)
+            review_response = self.generator.generate(chunk_json)
+
+            # Pass PR object to apply_review_comments
+            github_comments = self.apply_review_comments(review_response, chunk, pr)
+
+            if github_comments:
+                pr.create_review(
+                    event="COMMENT",
+                    comments=github_comments
+                )
+                logger.info(f"Posted {len(github_comments)} comments for chunk")
+
         except Exception as e:
-            logger.error(f"Failed to fetch file content: {str(e)}")
-            return None
+            logger.error(f"Error processing chunk: {str(e)}")
+            raise
 
-    @retry(max_retries=3, delay=2)
-    def generate_review(self, diff: str) -> ReviewResponse:
-        safe_diff = html.escape(diff[:self.max_diff_size])
-        prompt = self._build_review_prompt(safe_diff)
-
+    def validate_code_changes(self, pr, file_path: str, line_content: str, position: int) -> bool:
+        """
+        Validate if a specific code change already has a comment.
+        Returns True if the change needs a new comment, False otherwise.
+        """
         try:
-            return self.generator.generate(prompt)
+            existing_reviews = pr.get_review_comments()
+            normalized_content = self._normalize_code(line_content)
+
+            for comment in existing_reviews:
+                if (comment.path == file_path and
+                        comment.position == position and
+                        self._normalize_code(comment.diff_hunk) == normalized_content):
+                    return False
+            return True
         except Exception as e:
-            raise ReviewError(f"Failed to generate review: {str(e)}")
+            logger.error(f"Error validating code changes: {str(e)}")
+            return True
 
-    def _build_review_prompt(self, diff: str) -> str:
-        return f"""**Code Review Task**
-Analyze this code diff and generate structured feedback:
-{diff}
-
-**Requirements:**
-{self.custom_instructions}
-"""
-
-    def _build_summary_prompt(self, comment_payload: List[dict]) -> str:
-        comments_text = "\n".join([
-            f"- In file {comment['path']}: {comment['body']}"
-            for comment in comment_payload
-        ])
-
-        return f"""**Review Summary Task**
-    Please analyze these code review comments and provide a concise summary using language same as review comments language:
-    {comments_text}
-    
-    **Requirements:**
-    1. Using language same as review comments language
-    2. Markdown format
-
-    **Key points to include:**
-    1. Overall assessment
-    2. Main areas for improvement
-    3. Positive aspects found
-    4. Priority recommendations"""
-
-    def _find_position_in_diff(self, file_path: str, line_string: str, file_hunks: dict) -> Optional[int]:
-        if file_path not in file_hunks:
-            return None
-
-        for hunk in file_hunks[file_path]:
-            for i, line in enumerate(hunk['lines']):
-                if line.strip() == line_string.strip():
-                    return hunk['start_line'] + i
-        return None
-
-    @retry(max_retries=2, delay=3)
-    def post_comments(self, review_response: ReviewResponse, pr, current_head_sha: str, diff_content: str) -> None:
-        existing_comments = {(c.path, c.original_position) for c in pr.get_review_comments()}
-        file_hunks = self.parse_diff(diff_content)
-        comment_payload = []
+    def apply_review_comments(self, review_response: ReviewResponse, diff_chunk: Dict, pr) -> List[dict]:
+        """Enhanced apply_review_comments with change validation."""
+        github_comments = []
 
         for comment in review_response.comments:
-            file_path = comment.file_path
-            line_string = comment.line_string
+            for diff_entry in diff_chunk["diff"]:
+                if (diff_entry["file_path"] == comment.file_path and
+                        self._normalize_code(diff_entry["changes"]) == self._normalize_code(comment.line_string)):
 
-            file_lines = self.get_file_content(file_path, current_head_sha)
-            if not file_lines:
-                continue
+                    # Validate position
+                    if diff_entry["line"] <= 0:
+                        logger.warning(
+                            f"Skipping comment for {comment.file_path}: Invalid position {diff_entry['line']}")
+                        continue
 
-            position = self._find_position_in_diff(file_path, line_string, file_hunks)
-            if not position or (file_path, position) in existing_comments:
-                continue
+                    # Check if this change already has a comment
+                    if not self.validate_code_changes(pr,
+                                                      diff_entry["file_path"],
+                                                      diff_entry["changes"],
+                                                      diff_entry["line"]):
+                        logger.info(
+                            f"Skipping duplicate comment for {diff_entry['file_path']} at position {diff_entry['line']}")
+                        continue
 
-            comment_payload.append({
-                "path": file_path,
-                "position": position,
-                "body": f"**Finding**: {comment.comment}"
-            })
+                    github_comments.append({
+                        "path": comment.file_path,
+                        "position": diff_entry["line"],
+                        "body": f"**Finding**: {comment.comment}"
+                    })
+                    break
 
-        if comment_payload:
-            summary_prompt = self._build_summary_prompt(comment_payload)
-            summary = self.summary_generator.generate(summary_prompt)
+        return github_comments
 
-            summary_comment = f'''
-## 📝 Code Review Report
-
-{summary}
-
----
-
-Code review by @corivai-review
-Model: {self.model_name}
-
-
-'''
-
-            pr.create_issue_comment(summary_comment)
-
-            pr.create_review(event="COMMENT", comments=comment_payload)
-            pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
-            logger.info(f"Posted {len(comment_payload)} new review comments")
+    def _normalize_code(self, code: str) -> str:
+        return '\n'.join(line.strip() for line in code.split('\n') if line.strip())
 
     def process_pr(self) -> None:
         try:
@@ -200,18 +248,32 @@ Model: {self.model_name}
             pr = self.repo.get_pull(pr_number)
             current_head_sha = pr.head.sha
 
-            for comment in pr.get_issue_comments():
-                if f"@corivai-review Last Processed SHA: {current_head_sha}" in comment.body:
-                    logger.info("No new commits to process")
-                    return
-
+            # Get and validate diff content
             diff_content = self.get_pr_diff(pr)
             if len(diff_content) > self.max_diff_size:
                 logger.warning(f"Diff size ({len(diff_content)} bytes) exceeds limit")
                 return
 
-            review_response = self.generate_review(diff_content)
-            self.post_comments(review_response, pr, current_head_sha, diff_content)
+            # Create structured diff
+            structured_diff = self.create_structured_diff(pr, diff_content)
+            total_chunks = (len(structured_diff["diff"]) + self.chunk_size - 1) // self.chunk_size
+
+            logger.info(f"Processing {len(structured_diff['diff'])} changes in {total_chunks} chunks")
+
+            # Process each chunk
+            for i, chunk in enumerate(self.chunk_diff_data(structured_diff), 1):
+                logger.info(f"Processing chunk {i}/{total_chunks}")
+                self.process_chunk(chunk, pr, current_head_sha)
+
+                if i < total_chunks:
+                    logger.debug(f"Waiting {self.chunk_delay} seconds before next chunk")
+                    time.sleep(self.chunk_delay)
+
+            # Add completion comment
+            pr.create_issue_comment(
+                f"@corivai-review Last Processed SHA: {current_head_sha}\n"
+                f"Review completed at: {time.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            )
             logger.info("Review completed successfully")
 
         except Exception as e:

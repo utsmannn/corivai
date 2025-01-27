@@ -1,24 +1,28 @@
 name: 'Corivai - Code Review AI Assistant'
 description: 'AI-powered code review with custom instructions'
 inputs:
-  gemini-api-key:
-    description: 'Google Gemini API Key'
+  reviewer-api-key:
+    description: 'Provider API Key'
     required: true
   github-token:
     description: 'GitHub Token'
     required: true
   model-name:
     description: 'Gemini model name'
-    required: false
-    default: 'gemini-1.5-pro-latest'
+    required: true
+    default: ''
+  open-ai-url:
+    description: 'End point for OpenAI library compatibility'
+    required: true
+    default: ''
   custom-instructions:
     description: 'Additional review instructions (Markdown supported)'
     required: false
     default: ''
-  issue-number:
-    description: 'Issue number to track comments'
+  max-diff-size:
+    description: 'Max size of diff for analysts'
     required: false
-    default: ''
+    default: '100000'
 
 runs:
   using: "composite"
@@ -36,8 +40,9 @@ runs:
 
     - name: Execute review
       env:
-        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        API_KEY: ${{ inputs.reviewer-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_OPEN-AI-URL: ${{ inputs.open-ai-url }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
         INPUT_MAX_DIFF_SIZE: ${{ inputs.max-diff-size }}
