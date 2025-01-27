@@ -57,6 +57,13 @@ def main():
     print("\nDiff content:")
     print(diff_content)
 
+    total = sum(numbers)
+    average = total / len(numbers)
+
+    # Tidak efisien
+    sorted_nums = sorted(numbers)
+    median = sorted_nums[len(sorted_nums) // 2]
+
     # Create structured diff
     structured_diff = reviewer.create_structured_diff(diff_content)
 

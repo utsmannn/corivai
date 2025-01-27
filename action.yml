@@ -39,6 +39,7 @@ runs:
       shell: bash
 
     - name: Execute review
+      if: github.event_name == 'pull_request'
       env:
         API_KEY: ${{ inputs.reviewer-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -49,11 +50,18 @@ runs:
       run: python -m src.main
       shell: bash
 
-    - name: Track Comments
-      if: inputs.issue-number != ''
+    - name: Process Review Comments
+      if: github.event_name == 'pull_request_review_comment'
       env:
+        API_KEY: ${{ inputs.reviewer-api-key }}
+        INPUT_OPEN-AI-URL: ${{ inputs.open-ai-url }}
+        INPUT_MODEL-NAME: ${{ inputs.model-name }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        ISSUE_NUMBER: ${{ inputs.issue-number }}
+        COMMENT_BODY: ${{ github.event.comment.body }}
+        COMMENT_ID: ${{ github.event.comment.id }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
-      run: python -m src.comment_tracker
+        REVIEW_THREAD_ID: ${{ github.event.comment.pull_request_review_id }}
+        USER_LOGIN: ${{ github.event.comment.user.login }}
+      run: python -m src.comment_processor
       shell: bash
