@@ -43,9 +43,9 @@ def get_review_comments():
     for com in pr.get_comments():
         logger.info(f"cuaksssss ---> | {com.pull_request_review_id} ---> {thread_id}")
 
-    if thread_id:
-        comments = pr.get_comment(int(thread_id))
-        logger.info(f"cuaks ---> | {comments.pull_request_review_id} | {thread_id}")
+    # if thread_id:
+    #     comments = pr.get_review_comment(int(thread_id))
+    #     logger.info(f"cuaks ---> | {comments.pull_request_review_id} | {thread_id}")
 
     # headers = {
     #     'Authorization': f'token {token}',
