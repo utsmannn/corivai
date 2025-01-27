@@ -53,6 +53,7 @@ runs:
     - name: Process Review Comments
       if: github.event_name == 'pull_request_review_comment'
       env:
+        API_KEY: ${{ inputs.reviewer-api-key }}
         INPUT_OPEN-AI-URL: ${{ inputs.open-ai-url }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
