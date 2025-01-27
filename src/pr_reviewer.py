@@ -150,6 +150,7 @@ Analyze this code diff and generate structured feedback:
             Optional[int]: Nomor baris jika ditemukan, None jika tidak ditemukan atau file tidak ada.
         """
         try:
+            print("Current directory:", os.getcwd())
             print(f"cuakkss --> open file -> {file_path}")
             with open(file_path, 'r', encoding='utf-8') as file:
                 for line_number, line in enumerate(file, start=1):
