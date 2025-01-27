@@ -3,7 +3,7 @@ import logging
 import re
 import html
 import base64
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import requests
 from github import Github
@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 class PRReviewer:
     def __init__(self):
-        """Initialize the PR reviewer with configuration from environment variables."""
         self.github_token = os.getenv('GITHUB_TOKEN')
         self.repo_name = os.getenv('GITHUB_REPOSITORY')
         self.model_name = os.getenv('INPUT_MODEL-NAME', '')
@@ -34,7 +33,6 @@ class PRReviewer:
         self.generator = AIReviewGenerator(self.model_name)
 
     def get_pr_number(self) -> int:
-        """Extract PR number from GitHub reference."""
         pr_ref = os.getenv('GITHUB_REF')
         if not pr_ref:
             raise ReviewError("GITHUB_REF not found")
@@ -45,27 +43,23 @@ class PRReviewer:
 
     @retry(max_retries=3, delay=2)
     def get_pr_diff(self, pr) -> str:
-        """Fetch the diff content for a PR using GitHub's API."""
         headers = {
             'Authorization': f'Bearer {self.github_token}',
             'Accept': 'application/vnd.github.v3.diff'
         }
         url = f'https://api.github.com/repos/{self.repo_name}/pulls/{pr.number}'
-
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.text
 
     def parse_diff(self, diff_content: str) -> Dict[str, dict]:
         """
-        Parse git diff content into a structured format.
-
-        Returns:
-        Dict[str, dict]: A dictionary mapping file paths to their diff information
+        Parse git diff content into a structured format with line mapping.
         """
         file_hunks = {}
         current_file = None
         current_hunk = None
+        line_map = {}  # Maps line content to file path and position
 
         for line in diff_content.split('\n'):
             if line.startswith('diff --git'):
@@ -74,8 +68,7 @@ class PRReviewer:
                     current_file = match.group(2)
                     file_hunks[current_file] = {
                         'hunks': [],
-                        'content': [],
-                        'file_type': self._get_file_type(current_file)
+                        'content': []
                     }
             elif line.startswith('@@'):
                 match = re.match(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', line)
@@ -89,83 +82,48 @@ class PRReviewer:
                     file_hunks[current_file]['hunks'].append(current_hunk)
             elif current_file and current_hunk:
                 if not line.startswith('---') and not line.startswith('+++'):
-                    line_info = {
-                        'content': line[1:] if line.startswith((' ', '+', '-')) else line,
-                        'type': 'add' if line.startswith('+') else
-                        'remove' if line.startswith('-') else
-                        'context',
-                        'line_number': current_hunk['start_line'] + len([
+                    line_content = line[1:] if line.startswith(('+', '-', ' ')) else line
+                    line_type = 'add' if line.startswith('+') else \
+                        'remove' if line.startswith('-') else 'context'
+
+                    # Calculate line number for added or context lines
+                    line_number = None
+                    if line_type in ('add', 'context'):
+                        line_number = current_hunk['start_line'] + len([
                             l for l in current_hunk['lines']
                             if l.get('type') in ('add', 'context')
-                        ]) if line.startswith(('+', ' ')) else None
+                        ])
+
+                    line_info = {
+                        'content': line_content,
+                        'type': line_type,
+                        'line_number': line_number
                     }
                     current_hunk['lines'].append(line_info)
-                    file_hunks[current_file]['content'].append(line)
 
-        return file_hunks
+                    # Map line content to file path and position for added lines
+                    if line_type == 'add':
+                        stripped_content = line_content.strip()
+                        if stripped_content:  # Only map non-empty lines
+                            if stripped_content not in line_map:
+                                line_map[stripped_content] = []
+                            line_map[stripped_content].append({
+                                'file_path': current_file,
+                                'position': line_number
+                            })
 
-    def _get_file_type(self, file_path: str) -> str:
-        """Determine file type based on extension."""
-        ext = os.path.splitext(file_path)[1].lower()
-        return ext[1:] if ext else 'unknown'
+        return file_hunks, line_map
 
-    def get_file_content(self, file_path: str, ref: str) -> Optional[str]:
-        """Fetch file content from GitHub repository."""
-        try:
-            response = requests.get(
-                f"https://api.github.com/repos/{self.repo_name}/contents/{file_path}?ref={ref}",
-                headers={'Authorization': f'Bearer {self.github_token}'}
-            )
-            response.raise_for_status()
-            content = response.json()['content']
-            return base64.b64decode(content).decode('utf-8')
-        except Exception as e:
-            logger.error(f"Failed to fetch file content: {str(e)}")
-            return None
-
-    def validate_and_map_comments(self, review_response: ReviewResponse, diff_data: Dict[str, dict]) -> List[dict]:
+    def find_line_locations(self, line_string: str, line_map: Dict[str, List[dict]]) -> List[Tuple[str, int]]:
         """
-        Validate AI review comments against diff data and map them to correct positions.
+        Find all locations of a line string in the diff.
         """
-        valid_comments = []
-
-        for comment in review_response.comments:
-            # Normalize and find matching file
-            normalized_path = comment.file_path.lstrip('/')
-            matching_files = [f for f in diff_data.keys()
-                              if f.endswith(normalized_path) or normalized_path.endswith(f)]
-
-            if not matching_files:
-                logger.warning(f"No matching file found for AI comment: {comment.file_path}")
-                continue
-
-            file_path = matching_files[0]
-            found_position = None
-
-            # Find the correct position for the comment
-            for hunk in diff_data[file_path]['hunks']:
-                for line in hunk['lines']:
-                    if (line['type'] == 'add' and
-                            line['content'].strip() == comment.line_string.strip()):
-                        found_position = line['line_number']
-                        break
-                if found_position:
-                    break
-
-            if found_position:
-                valid_comments.append({
-                    'path': file_path,
-                    'position': found_position,
-                    'body': f"**Finding**: {comment.comment}"
-                })
-            else:
-                logger.warning(f"Could not find position for comment in {file_path}")
-
-        return valid_comments
+        stripped_line = line_string.strip()
+        locations = line_map.get(stripped_line, [])
+        return [(loc['file_path'], loc['position']) for loc in locations]
 
     @retry(max_retries=3, delay=2)
     def generate_review(self, diff: str) -> ReviewResponse:
-        """Generate an AI review for the given diff content."""
         safe_diff = html.escape(diff[:self.max_diff_size])
         prompt = self._build_review_prompt(safe_diff)
 
@@ -175,9 +133,14 @@ class PRReviewer:
             raise ReviewError(f"Failed to generate review: {str(e)}")
 
     def _build_review_prompt(self, diff: str) -> str:
-        """Build the prompt for the AI review."""
         return f"""**Code Review Task**
-Analyze this code diff and generate structured feedback:
+Analyze this code diff and generate structured feedback. For each comment, provide:
+1. The exact line of code you're commenting on (complete line, not partial)
+2. Your review comment
+
+Do not include file paths in your response - focus only on the specific lines and your comments about them.
+
+Diff to review:
 {diff}
 
 **Requirements:**
@@ -185,18 +148,41 @@ Analyze this code diff and generate structured feedback:
 """
 
     def _get_existing_comments(self, pr) -> set:
-        """Get existing review comments to avoid duplicates."""
         return {(c.path, c.position) for c in pr.get_review_comments()}
 
-    def post_comments(self, review_response: ReviewResponse, pr, current_head_sha: str,
-                      diff_data: Dict[str, dict]) -> None:
-        """Post validated review comments to the PR."""
-        existing_comments = self._get_existing_comments(pr)
-        valid_comments = self.validate_and_map_comments(review_response, diff_data)
+    def process_review_comments(self, review_response: ReviewResponse,
+                                line_map: Dict[str, List[dict]]) -> List[dict]:
+        """
+        Process review comments and map them to correct file locations.
+        """
+        processed_comments = []
 
-        # Filter out any comments that already exist
+        for comment in review_response.comments:
+            locations = self.find_line_locations(comment.line_string, line_map)
+
+            if not locations:
+                logger.warning(f"No location found for line: {comment.line_string}")
+                continue
+
+            # Create a comment for each location where this line appears
+            for file_path, position in locations:
+                processed_comments.append({
+                    'path': file_path,
+                    'position': position,
+                    'body': f"**Finding**: {comment.comment}"
+                })
+
+        return processed_comments
+
+    def post_comments(self, comments: List[dict], pr, current_head_sha: str) -> None:
+        """
+        Post the processed comments to the PR.
+        """
+        existing_comments = self._get_existing_comments(pr)
+
+        # Filter out existing comments
         new_comments = [
-            comment for comment in valid_comments
+            comment for comment in comments
             if (comment['path'], comment['position']) not in existing_comments
         ]
 
@@ -212,7 +198,9 @@ Analyze this code diff and generate structured feedback:
             logger.info("No new comments to post")
 
     def process_pr(self) -> None:
-        """Main method to process a pull request."""
+        """
+        Main method to process a pull request.
+        """
         try:
             pr_number = self.get_pr_number()
             pr = self.repo.get_pull(pr_number)
@@ -231,11 +219,13 @@ Analyze this code diff and generate structured feedback:
                 return
 
             # Parse diff and generate review
-            diff_data = self.parse_diff(diff_content)
+            diff_data, line_map = self.parse_diff(diff_content)
             review_response = self.generate_review(diff_content)
 
-            # Post comments
-            self.post_comments(review_response, pr, current_head_sha, diff_data)
+            # Process and post comments
+            processed_comments = self.process_review_comments(review_response, line_map)
+            self.post_comments(processed_comments, pr, current_head_sha)
+
             logger.info("Review completed successfully")
 
         except Exception as e:
