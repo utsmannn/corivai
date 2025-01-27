@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple, Iterator
 
 import requests
 from github import Github
+from github.PullRequest import PullRequest
 
 from src.exceptions import ReviewError
 from src.models import ReviewResponse, ReviewComment
@@ -102,10 +103,16 @@ class PRReviewer:
 
         return '\n'.join(code_lines), i, changed_blocks
 
-    def create_structured_diff(self, diff_content: str) -> Dict:
+    def create_structured_diff(self, pr: PullRequest, diff_content: str) -> Dict:
         structured_diff = {"diff": []}
         current_file = None
         diff_position = 0  # Track position within the diff
+
+        comments = pr.get_review_comments()
+
+        existing_paths = [comment.path for comment in comments]
+        existing_changes = [self._normalize_code(comment.diff_hunk) for comment in comments]
+        existing_line = [comment.position for comment in comments]
 
         lines = diff_content.split('\n')
         i = 0
@@ -135,14 +142,18 @@ class PRReviewer:
 
                 for block in changed_blocks:
                     if block['changes'].strip():
-                        structured_diff["diff"].append({
-                            "file_path": block['file_path'],
-                            "changes": block['changes'],
-                            "line": diff_position + (block['start_line'] - i),  # Calculate position relative to diff
-                            "comment": ""
-                        })
+                        file_path = block['file_path']
+                        changes = block['changes']
+                        line = diff_position + (block['start_line'] - i)
 
-                # Update diff position for the processed lines
+                        if file_path not in existing_paths and changes not in existing_changes and line not in existing_line:
+                            structured_diff["diff"].append({
+                                "file_path": file_path,
+                                "changes": changes,
+                                "line": line,
+                                "comment": ""
+                            })
+
                 diff_position += new_idx - i
                 i = new_idx
             else:
@@ -244,7 +255,7 @@ class PRReviewer:
                 return
 
             # Create structured diff
-            structured_diff = self.create_structured_diff(diff_content)
+            structured_diff = self.create_structured_diff(pr, diff_content)
             total_chunks = (len(structured_diff["diff"]) + self.chunk_size - 1) // self.chunk_size
 
             logger.info(f"Processing {len(structured_diff['diff'])} changes in {total_chunks} chunks")
