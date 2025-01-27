@@ -15,17 +15,29 @@ def setup_test_environment():
     os.environ['INPUT_OPEN-AI-URL'] = 'https://o.codeutsman.com/v1'
     os.environ['API_KEY'] = 'ollama'
 
-
 def read_test_diff():
+    """Read diff from a specific PR."""
+    token = os.getenv('GITHUB_TOKEN')
+    if not token:
+        raise ValueError("GITHUB_TOKEN environment variable is required")
+
     headers = {
-        'Authorization': f'Bearer {os.getenv("GITHUB_TOKEN")}',
+        'Authorization': f'Bearer {token}',
         'Accept': 'application/vnd.github.v3.diff'
     }
-    url = f'https://api.github.com/repos/corivai/pulls/53'
+
+    # Example: for https://github.com/coriva/coriva-action/pull/53
+    # repo would be "coriva/coriva-action"
+    repo = "utsmannn/corivai"  # Replace with your repository
+    pr_number = 53
+
+    url = f'https://api.github.com/repos/{repo}/pulls/{pr_number}'
+
+    print(f"Requesting URL: {url}")  # Debug line to verify URL
     response = requests.get(url, headers=headers)
     response.raise_for_status()
-    return response.text
 
+    return response.text
 
 def main():
     # Set up test environment
@@ -43,15 +55,25 @@ def main():
     # Create structured diff
     structured_diff = reviewer.create_structured_diff(diff_content)
 
+    # logger.info("Starting chunked review generation")
+    review_responses = reviewer.process_chunks(structured_diff)
+
+    # Merge all responses
+    merged_response = reviewer.merge_review_responses(review_responses)
+
+    # Convert to GitHub comments
+    github_comments = reviewer.apply_review_comments(merged_response, structured_diff)
+
     # Print structured diff for verification
-    print("\nStructured Diff:")
-    print(json.dumps(structured_diff, indent=2))
+    print("\nGithub comment:")
+    print(github_comments)
 
     # Generate review using AI
     # review_response = reviewer.generator.generate(json.dumps(structured_diff))
-    #
-    # # Print review response
+
+    # Print review response
     # print("\nReview Response:")
+    # print(review_response)
     # for comment in review_response.comments:
     #     print(f"\nFile: {comment.file_path}")
     #     print(f"Line: {comment.line_string}")
