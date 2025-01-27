@@ -60,7 +60,7 @@ class AIReviewGenerator(ResponseReviewGenerator):
         )
 
         # Extract and parse the JSON response
-        print(f"asuuu -> {response}")
+        print(f"asuuu -> {response.choices[0].message}")
         result = json.loads(response.choices[0].message.content)
 
         # Create ReviewComment objects from the response
