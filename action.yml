@@ -46,7 +46,7 @@ runs:
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
         INPUT_MAX_DIFF_SIZE: ${{ inputs.max-diff-size }}
-      run: python -m src.review
+      run: python -m src.main
       shell: bash
 
     - name: Track Comments
