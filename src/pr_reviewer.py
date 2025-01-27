@@ -6,7 +6,6 @@ import html
 import base64
 import logging
 import re
-import google.generativeai as genai
 from typing import Dict, List, Optional
 
 from github import Github
@@ -15,7 +14,7 @@ from src import GeminiSummaryGenerator
 from src.decorators import retry
 from src.exceptions import ReviewError
 from src.models import ReviewResponse
-from src.generator_review_interface import ResponseReviewGenerator, GeminiReviewGenerator
+from src.generator_review_interface import ResponseReviewGenerator, AIReviewGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +34,13 @@ class PRReviewer:
         self.github = Github(self.github_token)
         self.repo = self.github.get_repo(self.repo_name)
 
-        genai_api_key = os.getenv('GEMINI_API_KEY')
-        if not genai_api_key:
-            raise ReviewError("Missing Gemini API key")
+        # genai_api_key = os.getenv('GEMINI_API_KEY')
+        # if not genai_api_key:
+        #     raise ReviewError("Missing Gemini API key")
 
-        genai.configure(api_key=genai_api_key)
-        self.generator = GeminiReviewGenerator(self.model_name)
-        self.summary_generator = GeminiSummaryGenerator(self.model_name)
+        # genai.configure(api_key=genai_api_key)
+        self.generator = AIReviewGenerator(self.model_name)
+        # self.summary_generator = GeminiSummaryGenerator(self.model_name)
 
     def get_pr_number(self) -> int:
         pr_ref = os.getenv('GITHUB_REF')

@@ -18,10 +18,11 @@ jobs:
       - name: Run Code Review
         uses: ./
         with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          reviewer-api-key: ${{ secrets.REVIEWER_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          open-api-url: https://ollama.codeutsman.com/v1
           max-diff-size: 500000
-          model-name: gemini-2.0-flash-exp
+          model-name: llama3.2
           custom-instructions: |
             Using bahasa indonesia,
             Extreme review.

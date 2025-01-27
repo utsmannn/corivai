@@ -1,7 +1,9 @@
+import os
 from abc import ABC, abstractmethod
 from src.models import ReviewResponse, ReviewComment
-import google.generativeai as genai
-from google.ai.generativelanguage_v1beta.types import content
+from openai import OpenAI
+import json
+from typing import List, Dict, Any
 
 
 class ResponseReviewGenerator(ABC):
@@ -11,43 +13,56 @@ class ResponseReviewGenerator(ABC):
         pass
 
 
-class GeminiReviewGenerator(ResponseReviewGenerator):
+class AIReviewGenerator(ResponseReviewGenerator):
     def __init__(self, model_name: str):
+        self.baseUrl = os.getenv('INPUT_OPEN-API-URL')
+        self.apiKey = os.getenv('API_KEY')
+        self.client = OpenAI(base_url=self.baseUrl, api_key=self.apiKey)
 
-        self.generation_config = {
-            "temperature": 1,
-            "top_p": 0.95,
-            "top_k": 40,
-            "max_output_tokens": 8192,
-            "response_schema": content.Schema(
-                type=content.Type.OBJECT,
-                properties={
-                    "response": content.Schema(
-                        type=content.Type.ARRAY,
-                        items=content.Schema(
-                            type=content.Type.OBJECT,
-                            properties={
-                                "comment": content.Schema(type=content.Type.STRING),
-                                "file_path": content.Schema(type=content.Type.STRING),
-                                "line_string": content.Schema(type=content.Type.STRING),
-                            },
-                            required=["comment", "file_path", "line_string"]
-                        )
-                    )
-                },
-                required=["response"]
-            ),
-            "response_mime_type": "application/json",
+        self.model_name = model_name
+
+        # Define the response format for OpenAI
+        self.response_format = {
+            "type": "object",
+            "properties": {
+                "response": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "comment": {"type": "string"},
+                            "file_path": {"type": "string"},
+                            "line_string": {"type": "string"}
+                        },
+                        "required": ["comment", "file_path", "line_string"]
+                    }
+                }
+            },
+            "required": ["response"]
         }
-        self.model = genai.GenerativeModel(model_name=model_name, generation_config=self.generation_config)
 
     def generate(self, diff: str) -> ReviewResponse:
-        import json
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"You are a code review assistant. Analyze the provided diff and generate review comments. Respond with JSON matching this schema: {json.dumps(self.response_format)}"
+                },
+                {
+                    "role": "user",
+                    "content": diff
+                }
+            ],
+            temperature=1.0,
+            top_p=0.95,
+        )
 
-        response = self.model.generate_content(diff)
-        print(f"asuu response -> {response}")
-        result = json.loads(response.text.strip().replace('```json', '').replace('```', ''))
+        # Extract and parse the JSON response
+        result = json.loads(response.choices[0].message.content)
 
+        # Create ReviewComment objects from the response
         comments = [
             ReviewComment(
                 comment=item["comment"],
