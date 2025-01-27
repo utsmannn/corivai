@@ -216,10 +216,13 @@ Analyze this code diff and generate structured feedback:
             try:
                 print("create pr -->")
                 # pr.create_review(event="COMMENT", body=summary_comment, comments=comment_payload)
-                pr.create_review(event="COMMENT", comments=comment_payload)
-                # time.sleep(2)
-                pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
-                logger.info(f"Posted {len(comment_payload)} new review comments")
+
+                if any(item['position'] is not None for item in comment_payload):
+                    pr.create_review(event="COMMENT", comments=comment_payload)
+                    # time.sleep(2)
+                    pr.create_issue_comment(f"@corivai-review Last Processed SHA: {current_head_sha}")
+                    logger.info(f"Posted {len(comment_payload)} new review comments")
+
             except Exception as e:
                 logger.error(f"Critical error in commented review: -> {str(e)}")
 
