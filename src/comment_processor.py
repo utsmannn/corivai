@@ -1,12 +1,16 @@
+import json
 import os
-import requests
-import logging
 
 from github import Github
 
 from src import ReviewError
+from openai import OpenAI, BaseModel
 
-# logger = logging.getLogger(__name__)
+
+baseUrl = os.getenv('INPUT_OPEN-AI-URL')
+apiKey = os.getenv('API_KEY')
+client = OpenAI(base_url=baseUrl, api_key=apiKey)
+model_name = os.getenv('INPUT_MODEL-NAME', '')
 
 
 def get_pr_number() -> int:
@@ -19,11 +23,30 @@ def get_pr_number() -> int:
         raise ReviewError(f"Invalid PR reference format: {str(e)}")
 
 
+def generate_ai_response(messages):
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=0.2,
+            top_p=0.95
+        )
+
+        return response
+    except Exception as e:
+        raise Exception(f"Error processing AI response: {str(e)}")
+
+
+
 def get_review_comments():
     token = os.environ['GITHUB_TOKEN']
     repo = os.environ['REPO']
-    thread_id = os.environ['REVIEW_THREAD_ID']
     commend_id = os.environ['COMMENT_ID']
+    user_login = os.environ['USER_LOGIN']
+
+
+    if user_login == 'github-actions[bot]':
+        return
 
     github = Github(token)
     repo = github.get_repo(repo)
@@ -31,12 +54,7 @@ def get_review_comments():
     pr_number = get_pr_number()
     pr = repo.get_pull(pr_number)
 
-    print(f"cuaks comment id -> {commend_id}")
-    print(f"cuaks thread id -> {thread_id}")
-
-
     all_comment = pr.get_review_comments()
-
 
     if commend_id:
         comment = pr.get_comment(int(commend_id))
@@ -45,10 +63,34 @@ def get_review_comments():
 
         in_replies_to = [com for com in all_comment if com.in_reply_to_id == reply_to_id]
 
-        print(f"cuaks system --> {parent.diff_hunk}")
-        print(f"cuaks assistant ----> {parent.user.login}: {parent.body} | {parent.in_reply_to_id}")
-        for com in in_replies_to:
-            print(f"cuaks user ----> {com.user.login}: {com.body} | {com.in_reply_to_id}")
+        # print(f"cuaks system --> {parent.diff_hunk}")
+        # print(f"cuaks assistant ----> {parent.user.login}: {parent.body} | {parent.in_reply_to_id}")
+
+        messages = [
+            {
+                "role": "system",
+                "content": json.dumps(parent.diff_hunk)
+            },
+            {
+                "role": "assistant",
+                "content": parent.body
+            }
+        ]
+
+        for reply in in_replies_to:
+            messages.append({
+                "role": "user",
+                "content": reply.body
+            })
+
+        response = generate_ai_response(messages)
+        print("cuaks---")
+        print(response)
+        print("cuaks---")
+
+
+        # for com in in_replies_to:
+        #     print(f"cuaks user ----> {com.user.login}: {com.body} | {com.in_reply_to_id}")
 
 
 def main():

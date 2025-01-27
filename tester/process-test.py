@@ -45,7 +45,7 @@ class UserData:
     def print_info(self):
         print(f"Name: {self.name}")
         print(f"Age: {self.age}")
-        print(f"Birth Year: {datetime.datetime.today().year - self.age}")  # Hardcoded year
+        print(f"Birth Year: {2024 - 2028}")  # Hardcoded year
 
 
 def main():

@@ -53,11 +53,14 @@ runs:
     - name: Process Review Comments
       if: github.event_name == 'pull_request_review_comment'
       env:
+        INPUT_OPEN-AI-URL: ${{ inputs.open-ai-url }}
+        INPUT_MODEL-NAME: ${{ inputs.model-name }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         COMMENT_BODY: ${{ github.event.comment.body }}
         COMMENT_ID: ${{ github.event.comment.id }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
         REVIEW_THREAD_ID: ${{ github.event.comment.pull_request_review_id }}
+        USER_LOGIN: ${{ github.event.comment.user.login }}
       run: python -m src.comment_processor
       shell: bash
