@@ -64,7 +64,7 @@ runs:
         API_KEY: ${{ inputs.reviewer-api-key }}
         INPUT_OPENAI-URL: ${{ inputs.openai-url }}
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
-        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COMMENT_BODY: ${{ github.event.comment.body }}
         COMMENT_ID: ${{ github.event.comment.id }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
