@@ -20,7 +20,6 @@ jobs:
         uses: ./
         with:
           reviewer-api-key: ${{ secrets.REVIEWER_API_KEY }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           openai-url: https://generativelanguage.googleapis.com/v1beta/openai/
           max-diff-size: 500000
           model-name: gemini-1.5-flash
