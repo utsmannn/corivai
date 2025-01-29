@@ -1,26 +1,22 @@
 import json
 import os
+import gitlab
+from openai import OpenAI
 
-from github import Github
-
-from src import ReviewError
-from openai import OpenAI, BaseModel
-
-
-baseUrl = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
+baseUrl = os.getenv('OPENAI_URL', 'https://api.openai.com/v1')
 apiKey = os.getenv('API_KEY')
 client = OpenAI(base_url=baseUrl, api_key=apiKey)
-model_name = os.getenv('INPUT_MODEL-NAME', '')
+model_name = os.getenv('INPUT_MODEL_NAME', '')
 
 
-def get_pr_number() -> int:
-    pr_ref = os.getenv('GITHUB_REF')
-    if not pr_ref:
-        raise ReviewError("GITHUB_REF not found")
+def get_mr_iid():
+    mr_iid = os.getenv('CI_MERGE_REQUEST_IID')
+    if not mr_iid:
+        raise Exception("CI_MERGE_REQUEST_IID not found")
     try:
-        return int(pr_ref.split('/')[-2])
-    except (IndexError, ValueError) as e:
-        raise ReviewError(f"Invalid PR reference format: {str(e)}")
+        return int(mr_iid)
+    except ValueError as e:
+        raise Exception(f"Invalid MR IID format: {str(e)}")
 
 
 def generate_ai_response(messages):
@@ -31,66 +27,86 @@ def generate_ai_response(messages):
             temperature=0.2,
             top_p=0.95
         )
-
         return response.choices[0].message.content
     except Exception as e:
         raise Exception(f"Error processing AI response: {str(e)}")
 
 
-
 def get_review_comments():
-    token = os.environ['GITHUB_TOKEN']
-    repo = os.environ['REPO']
-    commend_id = os.environ['COMMENT_ID']
-    user_login = os.environ['USER_LOGIN']
+    token = os.environ['GITLAB_TOKEN']
+    project_id = os.environ['CI_PROJECT_ID']
+    note_id = os.environ.get('NOTE_ID')  # ID komentar yang di-reply
+    user_name = os.environ['GITLAB_USER_NAME']
 
-
-    if user_login == 'github-actions[bot]':
+    if user_name == 'gitlab-bot':
         return
 
-    github = Github(token)
-    repo = github.get_repo(repo)
+    # Inisialisasi GitLab client
+    gl = gitlab.Gitlab('https://gitlab.com', private_token=token)
+    project = gl.projects.get(project_id)
 
-    pr_number = get_pr_number()
-    pr = repo.get_pull(pr_number)
+    # Dapatkan Merge Request
+    mr_iid = get_mr_iid()
+    mr = project.mergerequests.get(mr_iid)
 
-    all_comment = pr.get_review_comments()
+    # Dapatkan semua diskusi di MR
+    discussions = mr.discussions.list()
 
-    if commend_id:
-        comment = pr.get_comment(int(commend_id))
-        reply_to_id = comment.in_reply_to_id
-        parent = pr.get_comment(reply_to_id)
+    if note_id:
+        # Cari diskusi yang mengandung note yang di-reply
+        for discussion in discussions:
+            for note in discussion.notes:
+                if str(note.id) == note_id:
+                    # Temukan parent note (note yang di-reply)
+                    parent_id = note.in_reply_to_id
+                    if parent_id:
+                        # Dapatkan semua reply untuk parent note
+                        parent_note = None
+                        replies = []
 
-        if parent.diff_hunk:
-            in_replies_to = [com for com in all_comment if com.in_reply_to_id == reply_to_id]
+                        for n in discussion.notes:
+                            if n.id == parent_id:
+                                parent_note = n
+                            elif n.in_reply_to_id == parent_id:
+                                replies.append(n)
 
-            messages = [
-                {
-                    "role": "system",
-                    "content": json.dumps(parent.diff_hunk)
-                },
-                {
-                    "role": "assistant",
-                    "content": parent.body
-                }
-            ]
+                        if parent_note and parent_note.position:
+                            messages = [
+                                {
+                                    "role": "system",
+                                    "content": json.dumps(parent_note.position.new_line)
+                                },
+                                {
+                                    "role": "assistant",
+                                    "content": parent_note.body
+                                }
+                            ]
 
-            for reply in in_replies_to:
-                messages.append({
-                    "role": "user",
-                    "content": reply.body
-                })
+                            # Tambahkan semua reply ke dalam messages
+                            for reply in replies:
+                                messages.append({
+                                    "role": "user",
+                                    "content": reply.body
+                                })
 
-            response = generate_ai_response(messages)
+                            # Generate response dan tambahkan sebagai reply
+                            response = generate_ai_response(messages)
 
-            pr.create_review_comment_reply(
-                comment_id=reply_to_id,
-                body=response
-            )
+                            # Buat reply baru di diskusi
+                            discussion.notes.create({
+                                'body': response,
+                                'in_reply_to_id': parent_id
+                            })
+
+                            return
 
 
 def main():
-    get_review_comments()
+    try:
+        get_review_comments()
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        exit(1)
 
 
 if __name__ == '__main__':
