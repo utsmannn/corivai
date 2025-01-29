@@ -20,3 +20,15 @@ code-review:
     OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
     MAX_DIFF_SIZE: "500000"
     MODEL_NAME: "gemini-1.5-flash"
+
+comment-bot-ai:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && 
+           $CI_MERGE_REQUEST_EVENT_TYPE == "note" && 
+           $CI_MERGE_REQUEST_NOTE =~ /run pipeline/i && 
+           $CI_MERGE_REQUEST_NOTE_AUTHOR_USERNAME != "project_xxxx"'
+      when: always
+  script:
+    - env
+    - echo "Pipeline triggered by comment from non-bot user"
+    - echo "$CI_MERGE_REQUEST_NOTE_AUTHOR_USERNAME"
