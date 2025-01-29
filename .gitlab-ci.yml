@@ -16,8 +16,8 @@ code-review:
     - echo $REVIEWER_API_KEY
     - echo "GITLAB_CI_TOKEN -->"
     - echo $GITLAB_CI_TOKEN
-    - echo "Nilai Custom Variable: $REVIEWER_API_KEY"
-    - echo "Nilai Custom Variable 2: $GITLAB_CI_TOKEN"
+    - echo "Nilai Custom Variable $REVIEWER_API_KEY"
+    - echo "Nilai Custom Variable 2 $GITLAB_CI_TOKEN"
     - pip install -r requirements.txt
     - python -m src.main-gitlab
   variables:
