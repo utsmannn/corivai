@@ -11,17 +11,17 @@ code-review:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
       when: always
   script:
-    - export VERSION=5.rc-1
-    - apt-get update
-    - apt-get install curl -y
-    - apt-get install zip unzip -y
-    - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v${VERSION}.zip -o action_code.zip
-    - unzip action_code.zip
-    - cp -R corivai-${VERSION}/corivai .
-    - cp corivai-${VERSION}/requirements.txt .
+#    - export VERSION=5.rc-1
+#    - apt-get update
+#    - apt-get install curl -y
+#    - apt-get install zip unzip -y
+#    - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v${VERSION}.zip -o action_code.zip
+#    - unzip action_code.zip
+#    - cp -R corivai-${VERSION}/corivai .
+#    - cp corivai-${VERSION}/requirements.txt .
     - pip install -r requirements.txt
     - python -m corivai.main-gitlab
   variables:
-    REVIEWER_OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
-    REVIEWER_MAX_DIFF_SIZE: "500000"
-    REVIEWER_MODEL_NAME: "gemini-1.5-flash"
+    API_KEY: "https://generativelanguage.googleapis.com/v1beta/openai/"
+    INPUT_MAX_DIFF_SIZE: "500000"
+    INPUT_MODEL_NAME: "gemini-1.5-flash"

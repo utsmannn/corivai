@@ -42,7 +42,6 @@ code-review:
     - pip install -r requirements.txt
     - python -m corivai.main-gitlab
   variables:
-    REVIEWER_OPENAI_URL: $[[ inputs.REVIEWER_OPENAI_URL ]]
     API_KEY: $[[ inputs.reviewer-api-key ]]
     GITLAB_TOKEN: $[[ inputs.gitlab-token ]]
     INPUT_OPENAI-URL: $[[ inputs.openai-url ]]
