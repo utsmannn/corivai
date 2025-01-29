@@ -12,6 +12,8 @@ code-review:
       when: always
   script:
     - env
+    - REVIEWER_API_KEY --> $REVIEWER_API_KEY
+    - GITLAB_CI_TOKEN --> GITLAB_CI_TOKEN
     - pip install -r requirements.txt
     - python -m src.main-gitlab
   variables:
