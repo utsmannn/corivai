@@ -1,96 +1,102 @@
 import json
 import os
+from typing import List, Dict
 
-from github import Github
+from openai import OpenAI
 
-from src import ReviewError
-from openai import OpenAI, BaseModel
-
-
-baseUrl = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
-apiKey = os.getenv('API_KEY')
-client = OpenAI(base_url=baseUrl, api_key=apiKey)
-model_name = os.getenv('INPUT_MODEL-NAME', '')
+from src.git_github import GitGithub
 
 
-def get_pr_number() -> int:
-    pr_ref = os.getenv('GITHUB_REF')
-    if not pr_ref:
-        raise ReviewError("GITHUB_REF not found")
-    try:
-        return int(pr_ref.split('/')[-2])
-    except (IndexError, ValueError) as e:
-        raise ReviewError(f"Invalid PR reference format: {str(e)}")
+class CommentProcessor:
+    def __init__(self):
+        self.token = os.environ['GITHUB_TOKEN']
+        self.repo = os.environ['REPO']
+        self.comment_id = os.environ.get('COMMENT_ID')
+        self.user_login = os.environ.get('USER_LOGIN')
 
+        # OpenAI configuration
+        self.base_url = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
+        self.api_key = os.getenv('API_KEY')
+        self.model_name = os.getenv('INPUT_MODEL-NAME', '')
 
-def generate_ai_response(messages):
-    try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            temperature=0.2,
-            top_p=0.95
-        )
+        # Initialize OpenAI client
+        self.client = OpenAI(base_url=self.base_url, api_key=self.api_key)
 
-        return response.choices[0].message.content
-    except Exception as e:
-        raise Exception(f"Error processing AI response: {str(e)}")
+        # Initialize GitGithub
+        self.git_github = GitGithub(token=self.token, repo_identifier=self.repo)
 
-
-
-def get_review_comments():
-    token = os.environ['GITHUB_TOKEN']
-    repo = os.environ['REPO']
-    commend_id = os.environ['COMMENT_ID']
-    user_login = os.environ['USER_LOGIN']
-
-
-    if user_login == 'github-actions[bot]':
-        return
-
-    github = Github(token)
-    repo = github.get_repo(repo)
-
-    pr_number = get_pr_number()
-    pr = repo.get_pull(pr_number)
-
-    all_comment = pr.get_review_comments()
-
-    if commend_id:
-        comment = pr.get_comment(int(commend_id))
-        reply_to_id = comment.in_reply_to_id
-        parent = pr.get_comment(reply_to_id)
-
-        if parent.diff_hunk:
-            in_replies_to = [com for com in all_comment if com.in_reply_to_id == reply_to_id]
-
-            messages = [
-                {
-                    "role": "system",
-                    "content": json.dumps(parent.diff_hunk)
-                },
-                {
-                    "role": "assistant",
-                    "content": parent.body
-                }
-            ]
-
-            for reply in in_replies_to:
-                messages.append({
-                    "role": "user",
-                    "content": reply.body
-                })
-
-            response = generate_ai_response(messages)
-
-            pr.create_review_comment_reply(
-                comment_id=reply_to_id,
-                body=response
+    def generate_ai_response(self, messages: List[Dict]) -> str:
+        """Generate AI response using OpenAI."""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=0.2,
+                top_p=0.95
             )
+            return response.choices[0].message.content
+        except Exception as e:
+            raise Exception(f"Error processing AI response: {str(e)}")
 
+    def process_review_comments(self):
+        """Process review comments and generate AI responses."""
+        # Skip if the comment is from github-actions bot
+        if self.user_login == 'github-actions[bot]':
+            return
+
+        # Get PR number and pull request
+        pr_number = self.git_github.get_request_number()
+        pr = self.git_github.get_request(pr_number)
+
+        # Get all review comments
+        all_comments = self.git_github.get_review_comments(pr)
+
+        if self.comment_id:
+            # Get the specific comment and its parent
+            comment = pr.get_comment(int(self.comment_id))
+            if comment.in_reply_to_id:
+                parent = pr.get_comment(comment.in_reply_to_id)
+
+                if parent.diff_hunk:
+                    # Get all replies to the parent comment
+                    in_replies_to = [
+                        com for com in all_comments
+                        if com.get('in_reply_to_id') == comment.in_reply_to_id
+                    ]
+
+                    # Prepare messages for AI
+                    messages = [
+                        {
+                            "role": "system",
+                            "content": json.dumps(parent.diff_hunk)
+                        },
+                        {
+                            "role": "assistant",
+                            "content": parent.body
+                        }
+                    ]
+
+                    # Add all replies to the conversation
+                    for reply in in_replies_to:
+                        messages.append({
+                            "role": "user",
+                            "content": reply['body']
+                        })
+
+                    # Generate AI response
+                    response = self.generate_ai_response(messages)
+
+                    # Create a review comment with the AI response
+                    self.git_github.create_review_comment(
+                        request=pr,
+                        file_path=parent.path,
+                        position=parent.position,
+                        body=response
+                    )
 
 def main():
-    get_review_comments()
+    reviewer = CommentProcessor()
+    reviewer.process_review_comments()
 
 
 if __name__ == '__main__':
