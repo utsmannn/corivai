@@ -11,6 +11,9 @@ code-review:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
       when: always
   script:
+    - echo "-- Project ID: ${CI_PROJECT_ID} --"
+    - echo "-- GITLAB_CI_TOKEN ID: ${GITLAB_CI_TOKEN} --"
+    - echo "-- REVIEWER_API_KEY ID: ${REVIEWER_API_KEY} --"
     - pip install -r requirements.txt
     - python -m src.main-gitlab
   variables:
