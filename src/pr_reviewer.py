@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import re
 import time
 from typing import Dict, List, Tuple, Iterator
@@ -8,21 +7,23 @@ from typing import Dict, List, Tuple, Iterator
 from src.exceptions import ReviewError
 from src.generator_review_interface import AIReviewGenerator
 from src.models import ReviewResponse
+from .config import CorivaiConfig
 from .git_interface import GitInterface
 
 logger = logging.getLogger(__name__)
 
 
 class PRReviewer:
-    def __init__(self, git_interface: GitInterface):
+    def __init__(self, git_interface: GitInterface, config: CorivaiConfig):
+
         self.git_interface = git_interface
-        self.model_name = os.getenv('INPUT_MODEL-NAME', '')
-        self.max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '500000'))
-        self.custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
+        self.model_name = config.model_name
+        self.max_diff_size = config.max_diff_size
+        self.custom_instructions = config.custom_instruction
         self.chunk_size = 5
         self.chunk_delay = 5
 
-        self.generator = AIReviewGenerator(self.model_name)
+        self.generator = AIReviewGenerator(config)
 
     def extract_code_block(self, lines: List[str], start_idx: int, current_file: str) -> Tuple[str, int, List[dict]]:
         code_lines = []

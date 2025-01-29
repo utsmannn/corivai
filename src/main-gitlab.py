@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 
+from src.config import CorivaiConfig
 from src.exceptions import ReviewError
 from src.pr_reviewer import PRReviewer
 from src.git_gitlab import GitGitlab
@@ -28,8 +29,24 @@ def main():
             repo_identifier=project_id
         )
 
+        api_key = os.getenv('REVIEWER_API_KEY')
+        baseUrl = os.getenv('openai-url', 'https://api.openai.com/v1')
+        model = os.getenv('model-name', '')
+        gitlab_token = os.getenv('GITLAB_TOKEN')
+        max_diff_size = int(os.getenv('max-diff-size', '500000'))
+        custom_instructions = os.getenv('custom_instructions', '')
+
+        config = CorivaiConfig(
+            api_key=api_key,
+            openai_url=baseUrl,
+            model_name=model,
+            git_token=gitlab_token,
+            max_diff_size=max_diff_size,
+            custom_instruction=custom_instructions
+        )
+
         # Initialize and run PR reviewer
-        reviewer = PRReviewer(git_interface=git_interface)
+        reviewer = PRReviewer(git_interface=git_interface, config=config)
         reviewer.process_request()
 
         logger.info("Review process completed successfully")
