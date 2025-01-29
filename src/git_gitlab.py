@@ -53,7 +53,7 @@ class GitGitlab(GitInterface):
         return '\n'.join(diff_content)
 
     def get_review_comments(self, request: MergeRequest) -> List[Dict]:
-        discussions = request.discussions.list()
+        discussions = request.discussions.list(get_all=True)
         comments = []
 
         for discussion in discussions:
