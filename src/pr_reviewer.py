@@ -161,7 +161,11 @@ class PRReviewer:
             comments = self.git_interface.get_review_comments(request)
             normalized_content = self._normalize_code(line_content)
 
+
+
             for comment in comments:
+                logger.info(f"anjay -------> {comment['diff_hunk']}")
+
                 if (comment['path'] == file_path and
                         comment['position'] == position and
                         self._normalize_code(comment['diff_hunk']) == normalized_content):
