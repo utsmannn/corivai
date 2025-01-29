@@ -3,9 +3,16 @@ from typing import Dict, List
 import requests
 import gitlab
 from gitlab.v4.objects import MergeRequest
+import logging
 
 from src.git_interface import GitInterface
 from src.exceptions import ReviewError
+
+logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+logger = logging.getLogger(__name__)
 
 
 class GitGitlab(GitInterface):
@@ -62,6 +69,7 @@ class GitGitlab(GitInterface):
         return comments
 
     def create_review_comment(self, request: MergeRequest, file_path: str, position: int, body: str) -> None:
+        logger.info(f"new line -------> {position}")
         request.discussions.create({
             'body': body,
             'position': {
