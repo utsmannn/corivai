@@ -1,0 +1,33 @@
+image: python:3.9-slim
+
+code-review:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE =~ /^(open|reopen|update)$/'
+      when: always
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE == "approved"'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
+      when: always
+  script:
+    - pip install -r requirements.txt
+    - python -m src.main-gitlab
+  variables:
+    GITLAB_TOKEN: ${GITLAB_CI_TOKEN}
+    CI_PROJECT_ID: ${CI_PROJECT_ID}
+    API_KEY: ${REVIEWER_API_KEY}
+    OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
+    MAX_DIFF_SIZE: "500000"
+    MODEL_NAME: "gemini-1.5-flash"
+
+comment-bot-ai:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && 
+           $CI_MERGE_REQUEST_EVENT_TYPE == "note" && 
+           $CI_MERGE_REQUEST_NOTE_AUTHOR_USERNAME != "project_xxxx"'
+      when: always
+  script:
+    - env
+    - echo "Pipeline triggered by comment from non-bot user"
+    - echo "$CI_MERGE_REQUEST_NOTE_AUTHOR_USERNAME"
