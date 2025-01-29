@@ -2,7 +2,7 @@ import os
 import json
 
 import requests
-from src import PRReviewer
+from corivai import PRReviewer
 
 
 

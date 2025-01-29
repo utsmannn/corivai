@@ -17,10 +17,10 @@ code-review:
     - apt-get install zip unzip -y
     - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v${VERSION}.zip -o action_code.zip
     - unzip action_code.zip
-    - cp -R corivai-${VERSION}/src .
+    - cp -R corivai-${VERSION}/corivai .
     - cp corivai-${VERSION}/requirements.txt .
     - pip install -r requirements.txt
-    - python -m src.main-gitlab
+    - python -m corivai.main-gitlab
   variables:
     REVIEWER_OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
     REVIEWER_MAX_DIFF_SIZE: "500000"

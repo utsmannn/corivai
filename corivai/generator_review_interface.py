@@ -4,8 +4,8 @@ from typing import Dict
 
 from openai import OpenAI, BaseModel
 
-from src.config import CorivaiConfig
-from src.models import ReviewResponse, ReviewComment
+from corivai.config import CorivaiConfig
+from corivai.models import ReviewResponse, ReviewComment
 
 
 class ResponseReviewGenerator(ABC):

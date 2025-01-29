@@ -2,10 +2,10 @@ import logging
 import os
 import sys
 
-from src.config import CorivaiConfig
-from src.exceptions import ReviewError
-from src.pr_reviewer import PRReviewer
-from src.git_gitlab import GitGitlab
+from corivai.config import CorivaiConfig
+from corivai.exceptions import ReviewError
+from corivai.pr_reviewer import PRReviewer
+from corivai.git_gitlab import GitGitlab
 
 
 logging.basicConfig(

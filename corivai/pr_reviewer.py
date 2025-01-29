@@ -4,11 +4,11 @@ import re
 import time
 from typing import Dict, List, Tuple, Iterator
 
-from src.exceptions import ReviewError
-from src.generator_review_interface import AIReviewGenerator
-from src.models import ReviewResponse
-from .config import CorivaiConfig
-from .git_interface import GitInterface
+from corivai.exceptions import ReviewError
+from corivai.generator_review_interface import AIReviewGenerator
+from corivai.models import ReviewResponse
+from corivai.config import CorivaiConfig
+from corivai.git_interface import GitInterface
 
 logger = logging.getLogger(__name__)
 

@@ -5,8 +5,8 @@ import gitlab
 from gitlab.v4.objects import MergeRequest
 import logging
 
-from src.git_interface import GitInterface
-from src.exceptions import ReviewError
+from corivai.git_interface import GitInterface
+from corivai.exceptions import ReviewError
 
 logging.basicConfig(
         level=logging.INFO,

@@ -4,8 +4,8 @@ import requests
 from github import Github
 from github.PullRequest import PullRequest
 
-from src.git_interface import GitInterface
-from src.exceptions import ReviewError
+from corivai.git_interface import GitInterface
+from corivai.exceptions import ReviewError
 
 class GitGithub(GitInterface):
     def __init__(self, token: str, repo_identifier: str):

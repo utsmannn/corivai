@@ -38,10 +38,11 @@ runs:
 
     - name: Download Action Code and Requirements
       run: |
-        curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v5.zip -o action_code.zip
+        export VERSION=4
+        curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v${VERSION}.zip -o action_code.zip
         unzip action_code.zip
-        cp -R corivai-main/src .
-        cp corivai-main/requirements.txt .
+        cp -R corivai-${VERSION}/corivai .
+        cp corivai-${VERSION}/requirements.txt .
       shell: bash
 
     - name: Install dependencies
@@ -58,7 +59,7 @@ runs:
         INPUT_MODEL-NAME: ${{ inputs.model-name }}
         INPUT_CUSTOM-INSTRUCTIONS: ${{ inputs.custom-instructions }}
         INPUT_MAX_DIFF_SIZE: ${{ inputs.max-diff-size }}
-      run: python -m src.main
+      run: python -m corivai.main
       shell: bash
 
     - name: Process Review Comments
@@ -74,5 +75,5 @@ runs:
         REPO: ${{ github.repository }}
         REVIEW_THREAD_ID: ${{ github.event.comment.pull_request_review_id }}
         USER_LOGIN: ${{ github.event.comment.user.login }}
-      run: python -m src.github_comment_processor
+      run: python -m corivai.github_comment_processor
       shell: bash
