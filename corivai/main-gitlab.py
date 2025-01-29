@@ -30,7 +30,7 @@ def main():
         )
 
         api_key = os.getenv('API_KEY')
-        baseUrl = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
+        baseUrl = os.getenv('INPUT_OPENAI_URL', 'https://api.openai.com/v1')
         model = os.getenv('INPUT_MODEL_NAME', '')
         gitlab_token = os.getenv('GITLAB_TOKEN')
         max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '500000'))

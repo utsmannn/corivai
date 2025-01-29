@@ -23,6 +23,6 @@ code-review:
     - python -m corivai.main-gitlab
   variables:
     API_KEY: '$REVIEWER_API_KEY'
-    INPUT_OPENAI-URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
+    INPUT_OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
     INPUT_MAX_DIFF_SIZE: "500000"
     INPUT_MODEL_NAME: "gemini-1.5-flash"
