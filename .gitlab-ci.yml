@@ -14,9 +14,9 @@ code-review:
     - pip install -r requirements.txt
     - python -m src.main-gitlab
   variables:
-    GITLAB_TOKEN: '$GITLAB_TOKEN'
-    CI_PROJECT_ID: '$CI_PROJECT_ID'
-    API_KEY: '$REVIEWER_API_KEY'
+    GITLAB_TOKEN: ${GITLAB_TOKEN}
+    CI_PROJECT_ID: ${CI_PROJECT_ID}
+    API_KEY: ${REVIEWER_API_KEY}
     OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
     MAX_DIFF_SIZE: "500000"
     MODEL_NAME: "gemini-1.5-flash"
