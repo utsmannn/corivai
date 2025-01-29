@@ -1,11 +1,10 @@
-import json
+import os
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import List, Dict, Any
+import json
 
 from openai import OpenAI, BaseModel
-
-from corivai.config import CorivaiConfig
-from corivai.models import ReviewResponse, ReviewComment
+from src.models import ReviewResponse, ReviewComment
 
 
 class ResponseReviewGenerator(ABC):
@@ -23,13 +22,11 @@ class DiffResponse(BaseModel):
     diff: list[DiffItem]
 
 class AIReviewGenerator(ResponseReviewGenerator):
-    def __init__(self, config: CorivaiConfig):
-
-        # self.baseUrl = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
-        # self.apiKey = os.getenv('API_KEY')
-
-        self.client = OpenAI(base_url=config.openai_url, api_key=config.api_key)
-        self.model_name = config.model_name
+    def __init__(self, model_name: str):
+        self.baseUrl = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
+        self.apiKey = os.getenv('API_KEY')
+        self.client = OpenAI(base_url=self.baseUrl, api_key=self.apiKey)
+        self.model_name = model_name
 
     def generate(self, structured_diff: str) -> ReviewResponse:
         response = self.client.beta.chat.completions.parse(
