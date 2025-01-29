@@ -12,7 +12,7 @@ code-review:
       when: always
   script:
     - pip install -r requirements.txt
-    - python main-gitlab.py
+    - python -m src.main-gitlab
   variables:
     API_KEY: '$REVIEWER_API_KEY'
     OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
