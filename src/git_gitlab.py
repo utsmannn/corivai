@@ -62,6 +62,11 @@ class GitGitlab(GitInterface):
         return comments
 
     def create_review_comment(self, request: MergeRequest, file_path: str, position: int, body: str) -> None:
+        print(f"asuuu ---> {request.diff_refs['base_sha']}")
+        print(f"asuuu 1 ---> {request.diff_refs['start_sha']}")
+        print(f"asuuu 2 ---> {request.diff_refs['head_sha']}")
+        print(f"asuuu 3 ---> {request.diff_refs}")
+
         request.discussions.create({
             'body': body,
             'position': {
