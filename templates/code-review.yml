@@ -35,16 +35,20 @@ code-review:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
       when: always
   script:
-    - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v4.zip -o action_code.zip
+    - export VERSION=5.rc-1
+    - apt-get update
+    - apt-get install curl -y
+    - apt-get install zip unzip -y
+    - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v${VERSION}.zip -o action_code.zip
     - unzip action_code.zip
-    - cp -R corivai-main/corivai .
-    - cp corivai-main/requirements.txt .
+    - cp -R corivai-${VERSION}/corivai .
+    - cp corivai-${VERSION}/requirements.txt .
     - pip install -r requirements.txt
     - python -m corivai.main-gitlab
   variables:
     API_KEY: $[[ inputs.reviewer-api-key ]]
     GITLAB_TOKEN: $[[ inputs.gitlab-token ]]
-    INPUT_OPENAI-URL: $[[ inputs.openai-url ]]
-    INPUT_MODEL-NAME: $[[ inputs.model-name ]]
-    INPUT_CUSTOM-INSTRUCTIONS: $[[ inputs.custom-instructions ]]
+    INPUT_OPENAI_URL: $[[ inputs.openai-url ]]
+    INPUT_MODEL_NAME: $[[ inputs.model-name ]]
+    INPUT_CUSTOM_INSTRUCTIONS: $[[ inputs.custom-instructions ]]
     INPUT_MAX_DIFF_SIZE: $[[ inputs.max-diff-size ]]
