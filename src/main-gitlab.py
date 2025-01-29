@@ -29,12 +29,12 @@ def main():
             repo_identifier=project_id
         )
 
-        api_key = os.getenv('REVIEWER_API_KEY')
-        baseUrl = os.getenv('openai-url', 'https://api.openai.com/v1')
-        model = os.getenv('model-name', '')
+        api_key = os.getenv('API_KEY')
+        baseUrl = os.getenv('INPUT_OPENAI-URL', 'https://api.openai.com/v1')
+        model = os.getenv('INPUT_MODEL-NAME', '')
         gitlab_token = os.getenv('GITLAB_TOKEN')
-        max_diff_size = int(os.getenv('max-diff-size', '500000'))
-        custom_instructions = os.getenv('custom_instructions', '')
+        max_diff_size = int(os.getenv('INPUT_MAX_DIFF_SIZE', '500000'))
+        custom_instructions = os.getenv('INPUT_CUSTOM_INSTRUCTIONS', '')
 
         config = CorivaiConfig(
             api_key=api_key,

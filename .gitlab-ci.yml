@@ -14,6 +14,7 @@ code-review:
     - pip install -r requirements.txt
     - python main-gitlab.py
   variables:
-    openai-url: https://generativelanguage.googleapis.com/v1beta/openai/
-    max-diff-size: 500000
-    model-name: gemini-1.5-flash
+    API_KEY: '$REVIEWER_API_KEY'
+    OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
+    MAX_DIFF_SIZE: "500000"
+    MODEL_NAME: "gemini-1.5-flash"
