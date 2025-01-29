@@ -4,7 +4,8 @@ import sys
 
 from src.exceptions import ReviewError
 from src.pr_reviewer import PRReviewer
-from src.git_github import GitGithub
+from src.git_gitlab import GitGitlab
+
 
 logging.basicConfig(
         level=logging.INFO,
@@ -14,18 +15,17 @@ logger = logging.getLogger(__name__)
 
 def main():
     try:
-
         # Get required environment variables
-        github_token = os.getenv('GITHUB_TOKEN')
-        repo_name = os.getenv('GITHUB_REPOSITORY')
+        gitlab_token = os.getenv('GITLAB_TOKEN')
+        project_id = os.getenv('CI_PROJECT_ID')
 
-        if not all([github_token, repo_name]):
-            raise ReviewError("Missing required environment variables: GITHUB_TOKEN, GITHUB_REPOSITORY")
+        if not all([gitlab_token, project_id]):
+            raise ReviewError("Missing required environment variables: GITLAB_TOKEN, CI_PROJECT_ID")
 
-        # Initialize GitHub interface
-        git_interface = GitGithub(
-            token=github_token,
-            repo_identifier=repo_name
+        # Initialize GitLab interface
+        git_interface = GitGitlab(
+            token=gitlab_token,
+            repo_identifier=project_id
         )
 
         # Initialize and run PR reviewer

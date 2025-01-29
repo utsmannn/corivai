@@ -36,13 +36,13 @@ runs:
       with:
         python-version: '3.11'
 
-    - name: Download Action Code and Requirements
-      run: |
-        curl -L https://github.com/utsmannn/corivai/archive/refs/heads/main.zip -o action_code.zip
-        unzip action_code.zip
-        cp -R corivai-main/src .
-        cp corivai-main/requirements.txt .
-      shell: bash
+#    - name: Download Action Code and Requirements
+#      run: |
+#        curl -L https://github.com/utsmannn/corivai/archive/refs/heads/main.zip -o action_code.zip
+#        unzip action_code.zip
+#        cp -R corivai-main/src .
+#        cp corivai-main/requirements.txt .
+#      shell: bash
 
     - name: Install dependencies
       run: |
