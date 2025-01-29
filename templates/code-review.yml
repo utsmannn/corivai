@@ -1,5 +1,7 @@
 spec:
   inputs:
+    stage:
+      default: build
     reviewer-api-key:
       description: 'Provider API Key'
       required: true
