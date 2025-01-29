@@ -13,6 +13,7 @@ code-review:
   script:
     - apt-get update
     - apt-get install curl -y
+    - apt-get install zip unzip -y
     - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v4.zip -o action_code.zip
     - unzip action_code.zip
     - cp -R corivai-main/src .
