@@ -11,19 +11,13 @@ code-review:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
       when: always
   script:
+    - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v5.zip -o action_code.zip
+    - unzip action_code.zip
+    - cp -R corivai-main/src .
+    - cp corivai-main/requirements.txt .
     - pip install -r requirements.txt
     - python -m src.main-gitlab
   variables:
-    API_KEY: ${REVIEWER_API_KEY}
-    OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
-    MAX_DIFF_SIZE: "500000"
-    MODEL_NAME: "gemini-1.5-flash"
-
-comment-bot-ai:
-  rules:
-    - if: '$CI_MERGE_REQUEST_EVENT_TYPE == "note"'
-      when: always
-  script:
-    - env
-    - echo "Pipeline triggered by comment from non-bot user"
-    - echo "$CI_MERGE_REQUEST_NOTE_AUTHOR_USERNAME"
+    REVIEWER_OPENAI_URL: "https://generativelanguage.googleapis.com/v1beta/openai/"
+    REVIEWER_MAX_DIFF_SIZE: "500000"
+    REVIEWER_MODEL_NAME: "gemini-1.5-flash"

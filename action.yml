@@ -36,13 +36,13 @@ runs:
       with:
         python-version: '3.11'
 
-#    - name: Download Action Code and Requirements
-#      run: |
-#        curl -L https://github.com/utsmannn/corivai/archive/refs/heads/main.zip -o action_code.zip
-#        unzip action_code.zip
-#        cp -R corivai-main/src .
-#        cp corivai-main/requirements.txt .
-#      shell: bash
+    - name: Download Action Code and Requirements
+      run: |
+        curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v5.zip -o action_code.zip
+        unzip action_code.zip
+        cp -R corivai-main/src .
+        cp corivai-main/requirements.txt .
+      shell: bash
 
     - name: Install dependencies
       run: |
@@ -74,5 +74,5 @@ runs:
         REPO: ${{ github.repository }}
         REVIEW_THREAD_ID: ${{ github.event.comment.pull_request_review_id }}
         USER_LOGIN: ${{ github.event.comment.user.login }}
-      run: python -m src.comment_processor
+      run: python -m src.github_comment_processor
       shell: bash

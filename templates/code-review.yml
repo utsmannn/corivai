@@ -1,0 +1,51 @@
+spec:
+  inputs:
+    reviewer-api-key:
+      description: 'Provider API Key'
+      required: true
+    gitlab-token:
+      description: 'Gitlab Token as User Agent'
+      required: true
+    model-name:
+      description: 'AI model name'
+      required: true
+      default: ''
+    openai-url:
+      description: 'Endpoint for OpenAI library compatibility'
+      required: false
+      default: 'https://api.openai.com/v1'
+    custom-instructions:
+      description: 'Additional review instructions (Markdown supported)'
+      required: false
+      default: ''
+    max-diff-size:
+      description: 'Max size of diff for analysts'
+      required: false
+      default: '100000'
+---
+code-review:
+  image: python:3.9-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE =~ /^(open|reopen|update)$/'
+      when: always
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE == "approved"'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
+      when: always
+  script:
+    - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v4.zip -o action_code.zip
+    - unzip action_code.zip
+    - cp -R corivai-main/src .
+    - cp corivai-main/requirements.txt .
+    - pip install -r requirements.txt
+    - python -m src.main-gitlab
+  variables:
+    REVIEWER_OPENAI_URL: $[[ inputs.REVIEWER_OPENAI_URL ]]
+    API_KEY: $[[ inputs.reviewer-api-key ]]
+    GITLAB_TOKEN: $[[ inputs.gitlab-token ]]
+    INPUT_OPENAI-URL: $[[ inputs.openai-url ]]
+    INPUT_MODEL-NAME: $[[ inputs.model-name ]]
+    INPUT_CUSTOM-INSTRUCTIONS: $[[ inputs.custom-instructions ]]
+    INPUT_MAX_DIFF_SIZE: $[[ inputs.max-diff-size ]]
