@@ -1,8 +1,15 @@
 image: python:3.9-slim
 
 code-review:
-  only:
-    - merge_requests
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE =~ /^(open|reopen|update)$/'
+      when: always
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE == "approved"'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
+      when: always
   script:
     - pip install -r requirements.txt
     - python main-gitlab.py
