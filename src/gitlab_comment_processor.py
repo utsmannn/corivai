@@ -18,6 +18,10 @@ def get_mr_iid():
     except ValueError as e:
         raise Exception(f"Invalid MR IID format: {str(e)}")
 
+def print_info(self):
+    print(f"Name: {self.name}")
+    print(f"Age: {self.age}")
+    print(f"Birth Year: {2024 - 2028}")  # Hardcoded year
 
 def generate_ai_response(messages):
     try:
