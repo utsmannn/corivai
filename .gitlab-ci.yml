@@ -11,7 +11,7 @@ code-review:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
       when: always
   script:
-    - export VERSION=4
+    - export VERSION=5.rc-1
     - apt-get update
     - apt-get install curl -y
     - apt-get install zip unzip -y

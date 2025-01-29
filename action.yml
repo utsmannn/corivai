@@ -38,7 +38,7 @@ runs:
 
     - name: Download Action Code and Requirements
       run: |
-        export VERSION=4
+        export VERSION=5.rc-1
         curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v${VERSION}.zip -o action_code.zip
         unzip action_code.zip
         cp -R corivai-${VERSION}/corivai .
