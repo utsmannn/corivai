@@ -25,7 +25,6 @@ comment-bot-ai:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && 
            $CI_MERGE_REQUEST_EVENT_TYPE == "note" && 
-           $CI_MERGE_REQUEST_NOTE =~ /run pipeline/i && 
            $CI_MERGE_REQUEST_NOTE_AUTHOR_USERNAME != "project_xxxx"'
       when: always
   script:
