@@ -3,7 +3,7 @@ import os
 
 from github import Github
 
-from src import ReviewError
+from corivai import ReviewError
 from openai import OpenAI, BaseModel
 
 
