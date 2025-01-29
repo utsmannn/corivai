@@ -157,15 +157,11 @@ class PRReviewer:
             return
 
     def validate_code_changes(self, request, file_path: str, line_content: str, position: int) -> bool:
-        logger.info(f"anjay -------> start validating hunk")
         try:
             comments = self.git_interface.get_review_comments(request)
             normalized_content = self._normalize_code(line_content)
-            logger.info(f"anjay -------> validating size: -> {len(comments)}")
 
             for comment in comments:
-                logger.info(f"anjay -------> {comment['diff_hunk']}")
-
                 if (comment['path'] == file_path and
                         comment['position'] == position and
                         self._normalize_code(comment['diff_hunk']) == normalized_content):

@@ -69,7 +69,6 @@ class GitGitlab(GitInterface):
         return comments
 
     def create_review_comment(self, request: MergeRequest, file_path: str, position: int, body: str) -> None:
-        logger.info(f"new line -------> {position}")
         request.discussions.create({
             'body': body,
             'position': {
