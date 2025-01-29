@@ -18,7 +18,7 @@ code-review:
     - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v${VERSION}.zip -o action_code.zip
     - unzip action_code.zip
     - cp -R corivai-${VERSION}/src .
-    - cp corivai-main/requirements.txt .
+    - cp corivai-${VERSION}/requirements.txt .
     - pip install -r requirements.txt
     - python -m src.main-gitlab
   variables:
