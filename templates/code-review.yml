@@ -31,11 +31,11 @@ code-review:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
       when: always
   script:
-    - export VERSION=5.rc-1
+    - export VERSION=7.0.0
     - apt-get update
     - apt-get install curl -y
     - apt-get install zip unzip -y
-    - curl -L https://github.com/utsmannn/corivai/archive/refs/tags/v${VERSION}.zip -o action_code.zip
+    - curl -L https://gitlab.com/utsmannn/corivai/-/archive/v${VERSION}/corivai-v${VERSION}.zip -o action_code.zip
     - unzip action_code.zip
     - cp -R corivai-${VERSION}/corivai .
     - cp corivai-${VERSION}/requirements.txt .
