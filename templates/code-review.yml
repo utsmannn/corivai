@@ -31,14 +31,14 @@ code-review:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_comment"'
       when: always
   script:
-    - export VERSION=7.0.0
+    - export VERSION=8.0.0
     - apt-get update
     - apt-get install curl -y
     - apt-get install zip unzip -y
     - curl -L https://gitlab.com/utsmannn/corivai/-/archive/v${VERSION}/corivai-v${VERSION}.zip -o action_code.zip
     - unzip action_code.zip
-    - cp -R corivai-${VERSION}/corivai .
-    - cp corivai-${VERSION}/requirements.txt .
+    - cp -R corivai-v${VERSION}/corivai .
+    - cp corivai-v${VERSION}/requirements.txt .
     - pip install -r requirements.txt
     - python -m corivai.main-gitlab
   variables:
