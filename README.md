@@ -1,4 +1,4 @@
-[![Github Action](https://img.shields.io/github/v/release/utsmannn/corivai?logo=github&label=Github%20Action)](https://github.com/marketplace/actions/corivai-code-review-ai-assistant) [![GitLab Component](https://img.shields.io/gitlab/v/tag/66620923?logo=gitlab&label=Gitlab%20Catalog&labelColor=%23A02E1C&color=%23CBE2F9)](https://gitlab.com/explore/catalog/utsmannn/corivai) 
+[![Github Action](https://img.shields.io/github/v/release/utsmannn/corivai?logo=github&label=Github%20Action)](https://github.com/marketplace/actions/corivai-code-review-ai-assistant) [![GitLab Component](https://img.shields.io/gitlab/v/tag/66620923?logo=gitlab&label=Gitlab%20Catalog&labelColor=%23A02E1C&color=%23CBE2F9)](https://gitlab.com/explore/catalog/utsmannn/corivai)
 
 # 🚀 Corivai Github Action - AI Powered Code Review Assistant on your PR
 
@@ -21,9 +21,6 @@ Here is [Gitlab CI support](#gitlab-support).
 - Performance optimization suggestions
 - Coding style and consistency checks
 
-![corivai-1.gif](img/corivai-1.gif)
-
-
 ### Interactive Comment Responses
 
 - AI-powered responses to questions about its review comments
@@ -31,8 +28,13 @@ Here is [Gitlab CI support](#gitlab-support).
 - Technical discussions through comment threads
 - Contextual understanding of the code being discussed
 
-![corivai-2.gif](img/corivai-2.gif)
+| Automated Code Review               | Interactive Comment Responses       |
+|-------------------------------------|-------------------------------------|
+| ![corivai-1.gif](img/corivai-1.gif) | ![corivai-2.gif](img/corivai-2.gif) |
 
+| Gitlab CI support                             | Interactive Comment Responses          |
+|-----------------------------------------------|----------------------------------------|
+| ![corivai-gitlab.png](img/corivai-gitlab.png) | Gitlab CI not support Comment Response |
 
 ## Setup Instructions
 
@@ -42,8 +44,8 @@ Add these secrets to your GitHub repository:
 
 - `REVIEWER_API_KEY`: Your API key for the chosen AI provider
 
-How to: https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository
-
+How
+to: https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository
 
 ### 2. Workflow Configuration
 
@@ -145,7 +147,7 @@ See: https://ollama.com/blog/openai-compatibility
 
 See: https://api-docs.deepseek.com/
 
-Models: https://api-docs.deepseek.com/quick_start/pricing 
+Models: https://api-docs.deepseek.com/quick_start/pricing
 
 ```yaml
 - name: AI Code Review
@@ -262,26 +264,27 @@ Add environment variable `ACTIONS_STEP_DEBUG=true` in repository settings for de
     - Include project-specific guidelines
     - Update based on team feedback
 
-
 <h2 id="gitlab-support">Gitlab Support</h3>
 
 [![GitLab Tag](https://img.shields.io/gitlab/v/tag/66620923?logo=gitlab&label=Gitlab%20Catalog&labelColor=%23A02E1C&color=%23CBE2F9)](https://gitlab.com/explore/catalog/utsmannn/corivai)
 
 You can find this GitLab component in the GitLab catalog.
 
+**The Gitlab CI only support for review code!**
+
 ### Setup Instructions for GitLab CI
 
 1. Create an access token in your project
-   - Go to **Settings > Access tokens > Add new token**  
-   - Select the following scopes: `api`, `read_api`, `read_repository`, `write_repository`  
-   - **Name the token the same as your bot name** (commented).
+    - Go to **Settings > Access tokens > Add new token**
+    - Select the following scopes: `api`, `read_api`, `read_repository`, `write_repository`
+    - **Name the token the same as your bot name** (commented).
 
 2. Store your token in a variable
-   - Go to **CI/CD > Variables > Add variable**  
-   - Make sure the token is visible in jobs by using these settings:  
-     - **Visibility**: Visible  
-     - **Flags**: **_Uncheck_** "Protect variable"  
-     - **Key**: Your variable name
+    - Go to **CI/CD > Variables > Add variable**
+    - Make sure the token is visible in jobs by using these settings:
+        - **Visibility**: Visible
+        - **Flags**: **_Uncheck_** "Protect variable"
+        - **Key**: Your variable name
 
 Finally, add the following to your `.gitlab-ci.yml` file:
 
