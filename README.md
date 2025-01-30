@@ -28,13 +28,18 @@ Here is [Gitlab CI support](#gitlab-support).
 - Technical discussions through comment threads
 - Contextual understanding of the code being discussed
 
-| Automated Code Review               | Interactive Comment Responses       |
-|-------------------------------------|-------------------------------------|
-| ![corivai-1.gif](img/corivai-1.gif) | ![corivai-2.gif](img/corivai-2.gif) |
+| Automated Code Review               | 
+|-------------------------------------|
+| ![corivai-1.gif](img/corivai-1.gif) |
 
-| Gitlab CI support                             | Interactive Comment Responses          |
-|-----------------------------------------------|----------------------------------------|
-| ![corivai-gitlab.png](img/corivai-gitlab.png) | Gitlab CI not support Comment Response |
+| Interactive Comment Responses       |
+|-------------------------------------|
+| ![corivai-2.gif](img/corivai-2.gif) |
+
+| Gitlab CI support, **Gitlab CI not support interactive Comment** |
+|------------------------------------------------------------------|
+| ![corivai-gitlab.png](img/corivai-gitlab.png)                    | 
+
 
 ## Setup Instructions
 
