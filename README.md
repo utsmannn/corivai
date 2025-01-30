@@ -264,6 +264,7 @@ Add environment variable `ACTIONS_STEP_DEBUG=true` in repository settings for de
 
 
 <h2 id="gitlab-support">Gitlab Support</h3>
+
 [![GitLab Tag](https://img.shields.io/gitlab/v/tag/66620923?logo=gitlab&label=Gitlab%20Catalog&labelColor=%23A02E1C&color=%23CBE2F9)](https://gitlab.com/explore/catalog/utsmannn/corivai)
 
 You can find this GitLab component in the GitLab catalog.
