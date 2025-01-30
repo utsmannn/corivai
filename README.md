@@ -1,3 +1,5 @@
+[![Github Action](https://img.shields.io/github/v/release/utsmannn/corivai?logo=github&label=Github%20Action)](https://github.com/marketplace/actions/corivai-code-review-ai-assistant) [![GitLab Component](https://img.shields.io/gitlab/v/tag/66620923?logo=gitlab&label=Gitlab%20Catalog&labelColor=%23A02E1C&color=%23CBE2F9)](https://gitlab.com/explore/catalog/utsmannn/corivai) 
+
 # 🚀 Corivai Github Action - AI Powered Code Review Assistant on your PR
 
 <p align="center">
@@ -7,6 +9,8 @@
 Corivai is a GitHub Action that provides automated code reviews and interactive discussions using various AI models. It
 not only reviews your pull requests but also engages in meaningful conversations through comments, offering explanations
 and clarifications when needed.
+
+Here is [Gitlab CI support](#gitlab-support).
 
 ## Features
 
@@ -257,6 +261,40 @@ Add environment variable `ACTIONS_STEP_DEBUG=true` in repository settings for de
     - Be specific about priorities
     - Include project-specific guidelines
     - Update based on team feedback
+
+
+<h2 id="gitlab-support">Gitlab Support</h3>
+[![GitLab Tag](https://img.shields.io/gitlab/v/tag/66620923?logo=gitlab&label=Gitlab%20Catalog&labelColor=%23A02E1C&color=%23CBE2F9)](https://gitlab.com/explore/catalog/utsmannn/corivai)
+
+You can find this GitLab component in the GitLab catalog.
+
+### Setup Instructions for GitLab CI
+
+1. Create an access token in your project
+   - Go to **Settings > Access tokens > Add new token**  
+   - Select the following scopes: `api`, `read_api`, `read_repository`, `write_repository`  
+   - **Name the token the same as your bot name** (commented).
+
+2. Store your token in a variable
+   - Go to **CI/CD > Variables > Add variable**  
+   - Make sure the token is visible in jobs by using these settings:  
+     - **Visibility**: Visible  
+     - **Flags**: **_Uncheck_** "Protect variable"  
+     - **Key**: Your variable name
+
+Finally, add the following to your `.gitlab-ci.yml` file:
+
+```yaml
+include:
+  - component: $CI_SERVER_FQDN/utsmannn/corivai/code-review@v8.0.0
+    inputs:
+      stage: build
+      gitlab-token: '$GITLAB_TOKEN'
+      reviewer-api-key: 'ollama'
+      openai-url: "https://o.codeutsman.com/v1"
+      max-diff-size: "500000"
+      model-name: "qwen2.5-coder"
+```
 
 ## Contributing
 

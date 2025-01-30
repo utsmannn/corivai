@@ -1,3 +1,16 @@
+# Gitlab component for Gitlab CI
+# Use:
+#
+# include:
+#  - component: $CI_SERVER_FQDN/utsmannn/corivai/code-review@v8.0.0
+#    inputs:
+#      stage: build
+#      gitlab-token: '$GITLAB_TOKEN'
+#      reviewer-api-key: 'ollama'
+#      openai-url: "https://o.codeutsman.com/v1"
+#      max-diff-size: "500000"
+#      model-name: "qwen2.5-coder"
+
 spec:
   inputs:
     stage:
